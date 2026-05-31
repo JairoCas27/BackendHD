@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.domain.model;
+package com.urbanpark.parking.vehicle.domain.model;
  
 import com.urbanpark.parking.user.domain.model.User;
 import jakarta.persistence.*;
