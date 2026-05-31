@@ -23,6 +23,11 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotificationsByCondominio(condominioId));
     }
 
+    @GetMapping("/condominio/{condominioId}/unread")
+    public ResponseEntity<List<Notification>> getUnreadNotifications(@PathVariable String condominioId) {
+        return ResponseEntity.ok(notificationService.getUnreadNotifications(condominioId));
+    }
+
     @PostMapping
     public ResponseEntity<Notification> triggerNotification(
             @RequestParam String condominioId,
