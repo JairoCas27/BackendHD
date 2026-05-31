@@ -3,6 +3,7 @@ package com.urbanpark.parking.repository;
 import com.urbanpark.parking.domain.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -10,4 +11,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByCondominioIdOrderByCreatedAtDesc(String condominioId);
 
     List<Notification> findByCondominioIdAndIsReadFalseOrderByCreatedAtDesc(String condominioId);
+
+    void deleteByCreatedAtBefore(LocalDateTime date);
 }
