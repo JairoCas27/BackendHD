@@ -1,6 +1,7 @@
 package com.urbanpark.parking.controller;
 
 import com.urbanpark.parking.domain.AuditLog;
+import com.urbanpark.parking.domain.AuditSeverity;
 import com.urbanpark.parking.service.AuditLogService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,9 +28,10 @@ public class AuditLogController {
             @RequestParam String userId,
             @RequestParam String action,
             @RequestParam String details,
+            @RequestParam AuditSeverity severity,
             @RequestParam String ipAddress) {
         
-        AuditLog createdLog = auditLogService.logEvent(tenantId, userId, action, details, ipAddress);
+        AuditLog createdLog = auditLogService.logEvent(tenantId, userId, action, details, severity, ipAddress);
         return ResponseEntity.ok(createdLog);
     }
 }

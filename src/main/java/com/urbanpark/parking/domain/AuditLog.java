@@ -36,7 +36,8 @@ public class AuditLog {
     public AuditLog() {
     }
 
-    public AuditLog(String tenantId, String userId, String action, String details, String ipAddress) {
+    public AuditLog(String tenantId, String userId, String action, String details, AuditSeverity severity,
+        String ipAddress) {
         this.tenantId = tenantId;
         this.userId = userId;
         this.action = action;
