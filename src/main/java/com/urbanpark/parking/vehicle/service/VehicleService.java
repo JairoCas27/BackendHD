@@ -25,6 +25,12 @@ public interface VehicleService {
  
     /** Actualiza datos descriptivos del vehículo. */
     VehicleResponse updateVehicle(Long id, UpdateVehicleRequest request, String tenantId);
+
+    /**
+     * Obtiene el propietario de un vehículo por su placa.
+     * @return Optional con el User si existe y está activo
+     */
+    Optional<User> getVehicleOwnerByPlate(String plate, String tenantId);
  
     /** Elimina un vehículo del registro del SaaS. */
     void deleteVehicle(Long id, String tenantId);
