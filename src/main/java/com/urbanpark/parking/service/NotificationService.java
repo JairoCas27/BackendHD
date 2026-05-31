@@ -43,6 +43,10 @@ public class NotificationService {
         return notificationRepository.findByCondominioIdOrderByCreatedAtDesc(condominioId);
     }
 
+    public List<Notification> getUnreadNotifications(String condominioId) {
+        return notificationRepository.findByCondominioIdAndIsReadFalseOrderByCreatedAtDesc(condominioId);
+    }
+
     @Transactional
     public Notification markAsRead(Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
