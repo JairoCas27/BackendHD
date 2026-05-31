@@ -145,6 +145,15 @@ public class VehicleServiceImpl implements VehicleService {
             tenantId, synced, externalVehicles.size());
         return synced;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<User> getVehicleOwnerByPlate(String plate, String tenantId) {
+        String normalizedPlate = plate.toUpperCase().trim();
+        return vehicleRepository.findByPlateAndTenantId(normalizedPlate, tenantId)
+                .filter(Vehicle::getIsActive)
+                .map(Vehicle::getOwner);
+    }
  
     // ──────────────────────────────────────────────────────────────────────────
     // HELPERS
