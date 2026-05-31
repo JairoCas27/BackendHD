@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.integration.client;
+package com.urbanpark.parking.integration.client;
  
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

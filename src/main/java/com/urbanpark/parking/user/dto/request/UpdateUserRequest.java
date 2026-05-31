@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.dto.request;
+package com.urbanpark.parking.user.dto.request;
  
 import com.urbanpark.parking.user.domain.enums.UserStatus;
 import jakarta.validation.constraints.Email;

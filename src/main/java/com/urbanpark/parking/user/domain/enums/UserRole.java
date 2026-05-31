@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.domain.enums;
+package com.urbanpark.parking.user.domain.enums;
  
 /**
  * Roles internos del SaaS de parking.

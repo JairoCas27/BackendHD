@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.visitor.service.impl;
+package com.urbanpark.parking.visitor.service.impl;
  
 import com.urbanpark.parking.core.exception.BusinessException;
 import com.urbanpark.parking.user.domain.model.User;

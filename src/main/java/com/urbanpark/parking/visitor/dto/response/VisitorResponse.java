@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.visitor.dto.response;
+package com.urbanpark.parking.visitor.dto.response;
  
 import java.time.LocalDateTime;
  

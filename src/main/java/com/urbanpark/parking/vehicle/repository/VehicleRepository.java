@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.vehicle.repository;
+package com.urbanpark.parking.vehicle.repository;
  
 import com.urbanpark.parking.vehicle.domain.model.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;

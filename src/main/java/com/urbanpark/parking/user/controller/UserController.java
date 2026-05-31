@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.controller;
+package com.urbanpark.parking.user.controller;
  
 import com.urbanpark.parking.tenant.TenantContext;
 import com.urbanpark.parking.user.dto.request.UpdateUserRequest;

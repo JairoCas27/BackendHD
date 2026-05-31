@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.visitor.controller;
+package com.urbanpark.parking.visitor.controller;
  
 import com.urbanpark.parking.tenant.TenantContext;
 import com.urbanpark.parking.visitor.dto.request.CreateVisitorRequest;

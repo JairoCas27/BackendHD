@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.integration.client;
+package com.urbanpark.parking.integration.client;
  
 import com.urbanpark.parking.integration.dto.ExternalCondominiumDtos.*;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.vehicle.mapper;
+package com.urbanpark.parking.vehicle.mapper;
  
 import com.urbanpark.parking.vehicle.domain.model.Vehicle;
 import com.urbanpark.parking.vehicle.dto.response.VehicleResponse;

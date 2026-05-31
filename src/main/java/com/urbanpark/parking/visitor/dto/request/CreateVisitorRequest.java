@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.visitor.dto.request;
+package com.urbanpark.parking.visitor.dto.request;
  
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;

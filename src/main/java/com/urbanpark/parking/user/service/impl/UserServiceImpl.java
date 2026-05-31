@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.service.impl;
+package com.urbanpark.parking.user.service.impl;
  
 import com.urbanpark.parking.integration.client.CondominiumApiClient;
 import com.urbanpark.parking.integration.dto.ExternalCondominiumDtos.ExternalUserDto;
