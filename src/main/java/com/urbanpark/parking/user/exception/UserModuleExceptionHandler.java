@@ -1,6 +1,7 @@
 package com.urbanpark.parking.user.exception;
  
 import com.urbanpark.parking.vehicle.exception.VehicleNotFoundException;
+import com.urbanpark.parking.visitor.exception.VisitorNotFoundException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,6 @@ import java.util.stream.Collectors;
  
 /**
  * Manejador de excepciones específico del módulo de usuarios (feature/users).
- *
  */
 @RestControllerAdvice
 @Order(1)
@@ -23,8 +23,6 @@ public class UserModuleExceptionHandler {
  
     // ──────────────────────────────────────────────────────────────────────────
     // 404 - Tipos específicos de feature/users
-    // El GlobalExceptionHandler no tiene @ExceptionHandler(UserNotFoundException)
-    // ni VehicleNotFoundException, así que no hay conflicto.
     // ──────────────────────────────────────────────────────────────────────────
  
     @ExceptionHandler(UserNotFoundException.class)
@@ -37,10 +35,13 @@ public class UserModuleExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
     }
  
+    @ExceptionHandler(VisitorNotFoundException.class)
+    public ResponseEntity<Object> handleVisitorNotFound(VisitorNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
+    }
+ 
     // ──────────────────────────────────────────────────────────────────────────
     // 400 - Validaciones de @Valid en los controllers de este módulo
-    // GlobalExceptionHandler no maneja MethodArgumentNotValidException,
-    // así que tampoco hay conflicto aquí.
     // ──────────────────────────────────────────────────────────────────────────
  
     @ExceptionHandler(MethodArgumentNotValidException.class)
