@@ -29,9 +29,13 @@ public class NotificationController {
             @RequestParam String title,
             @RequestParam String message,
             @RequestParam NotificationType type) {
-        
+
         Notification created = notificationService.createNotification(condominioId, title, message, type);
         return ResponseEntity.ok(created);
     }
-}
 
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<Notification> markAsRead(@PathVariable Long id) {
+        return ResponseEntity.ok(notificationService.markAsRead(id));
+    }
+}
