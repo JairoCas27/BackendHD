@@ -39,4 +39,11 @@ public class EstacionamientoController {
             @PathVariable String apartamentoId) {
         return ResponseEntity.ok(service.asignarApartamento(id, apartamentoId));
     }
+
+    // UNIFICACIÓN ESTRATÉGICA: Usamos la ruta exacta que quiere el grupo para reportes, 
+    // pero con tu lógica blindada libre de brechas de seguridad.
+    @GetMapping("/api/v1/reports/occupation")
+    public ResponseEntity<com.urbanpark.parking.modules.parking.dto.ReporteOperativoDto> obtenerReportes() {
+        return ResponseEntity.ok(service.generarReporteCompleto());
+    }
 }
