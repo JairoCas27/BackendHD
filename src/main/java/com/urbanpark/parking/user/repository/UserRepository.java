@@ -1,4 +1,4 @@
-package com.urbanpark.parking.user.repository;
+package main.java.com.urbanpark.parking.user.repository;
  
 import com.urbanpark.parking.user.domain.enums.UserRole;
 import com.urbanpark.parking.user.domain.enums.UserStatus;
