@@ -1,6 +1,7 @@
 package com.urbanpark.parking.service;
 
 import com.urbanpark.parking.domain.AuditLog;
+import com.urbanpark.parking.domain.AuditSeverity;
 import com.urbanpark.parking.repository.AuditLogRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,8 +17,9 @@ public class AuditLogService {
     }
 
     @Transactional
-    public AuditLog logEvent(String tenantId, String userId, String action, String details, String ipAddress) {
-        AuditLog log = new AuditLog(tenantId, userId, action, details, ipAddress);
+    public AuditLog logEvent(String tenantId, String userId, String action, String details, AuditSeverity severity,
+        String ipAddress) {
+        AuditLog log = new AuditLog(tenantId, userId, action, details, severity, ipAddress);
         return auditLogRepository.save(log);
     }
 
