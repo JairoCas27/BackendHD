@@ -1,6 +1,7 @@
 package com.urbanpark.parking.service;
 
 import com.urbanpark.parking.domain.Notification;
+import com.urbanpark.parking.domain.NotificationTemplate;
 import com.urbanpark.parking.domain.NotificationType;
 import com.urbanpark.parking.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
@@ -26,8 +27,18 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
+    public Notification createTemplateNotification(String condominioId, NotificationTemplate template,
+            NotificationType type, String param) {
+        Notification notification = new Notification();
+        notification.setCondominioId(condominioId);
+        notification.setTitle(template.getTitle());
+        notification.setMessage(template.formatMessage(param));
+        notification.setType(type);
+        notification.setCreatedAt(LocalDateTime.now());
+        return notificationRepository.save(notification);
+    }
+
     public List<Notification> getNotificationsByCondominio(String condominioId) {
         return notificationRepository.findByCondominioIdOrderByCreatedAtDesc(condominioId);
     }
 }
-
