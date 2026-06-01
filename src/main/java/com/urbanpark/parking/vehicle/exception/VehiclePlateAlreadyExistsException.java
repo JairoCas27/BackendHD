@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.vehicle.exception;
+package com.urbanpark.parking.vehicle.exception;
  
 import com.urbanpark.parking.core.exception.BusinessException;
  

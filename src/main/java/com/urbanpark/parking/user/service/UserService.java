@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.service;
+package com.urbanpark.parking.user.service;
  
 import com.urbanpark.parking.user.domain.model.User;
 import com.urbanpark.parking.user.dto.request.UpdateUserRequest;

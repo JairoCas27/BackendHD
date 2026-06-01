@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.vehicle.dto.request;
+package com.urbanpark.parking.vehicle.dto.request;
  
 import jakarta.validation.constraints.Size;
  

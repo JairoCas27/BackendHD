@@ -1,7 +1,8 @@
-package main.java.com.urbanpark.parking.visitor.service.impl;
+package com.urbanpark.parking.visitor.service.impl;
  
 import com.urbanpark.parking.core.exception.BusinessException;
 import com.urbanpark.parking.user.domain.model.User;
+import com.urbanpark.parking.visitor.exception.VisitorNotFoundException;
 import com.urbanpark.parking.user.domain.model.Visitor;
 import com.urbanpark.parking.user.exception.UserNotFoundException;
 import com.urbanpark.parking.user.repository.UserRepository;
@@ -86,7 +87,7 @@ public class VisitorServiceImpl implements VisitorService {
     @Transactional(readOnly = true)
     public VisitorResponse getVisitorById(Long id, String tenantId) {
         Visitor visitor = visitorRepository.findByIdAndTenantId(id, tenantId)
-            .orElseThrow(() -> new BusinessException("Visitante no encontrado con id: " + id));
+            .orElseThrow(() -> new VisitorNotFoundException(id));
         return visitorMapper.toResponse(visitor);
     }
  
@@ -104,9 +105,10 @@ public class VisitorServiceImpl implements VisitorService {
     @Transactional
     public void revokeVisitor(Long id, String tenantId) {
         Visitor visitor = visitorRepository.findByIdAndTenantId(id, tenantId)
-            .orElseThrow(() -> new BusinessException("Visitante no encontrado con id: " + id));
+            .orElseThrow(() -> new VisitorNotFoundException(id));
         visitor.setIsActive(false);
         visitorRepository.save(visitor);
         log.info("Visitante {} revocado en tenant {}", id, tenantId);
     }
 }
+ 

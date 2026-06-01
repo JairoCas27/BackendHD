@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.visitor.mapper;
+package com.urbanpark.parking.visitor.mapper;
  
 import com.urbanpark.parking.user.domain.model.Visitor;
 import com.urbanpark.parking.visitor.dto.response.VisitorResponse;

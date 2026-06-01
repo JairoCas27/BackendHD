@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.visitor.service;
+package com.urbanpark.parking.visitor.service;
  
 import com.urbanpark.parking.visitor.dto.request.CreateVisitorRequest;
 import com.urbanpark.parking.visitor.dto.response.VisitorResponse;

@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.visitor.repository;
+package com.urbanpark.parking.visitor.repository;
  
 import com.urbanpark.parking.user.domain.model.Visitor;
 import org.springframework.data.jpa.repository.JpaRepository;

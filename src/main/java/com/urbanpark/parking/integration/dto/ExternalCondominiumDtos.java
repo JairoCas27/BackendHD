@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.integration.dto;
+package com.urbanpark.parking.integration.dto;
  
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

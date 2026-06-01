@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.vehicle.service;
+package com.urbanpark.parking.vehicle.service;
  
 import com.urbanpark.parking.vehicle.dto.request.CreateVehicleRequest;
 import com.urbanpark.parking.vehicle.dto.request.UpdateVehicleRequest;

@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.vehicle.exception;
+package com.urbanpark.parking.vehicle.exception;
  
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;

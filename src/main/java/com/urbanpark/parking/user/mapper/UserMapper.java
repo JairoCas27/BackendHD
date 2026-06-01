@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.mapper;
+package com.urbanpark.parking.user.mapper;
  
 import com.urbanpark.parking.user.domain.model.User;
 import com.urbanpark.parking.user.dto.response.UserResponse;

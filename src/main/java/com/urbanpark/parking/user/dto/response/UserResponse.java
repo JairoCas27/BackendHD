@@ -1,4 +1,4 @@
-package main.java.com.urbanpark.parking.user.dto.response;
+package com.urbanpark.parking.user.dto.response;
  
 import com.urbanpark.parking.user.domain.enums.UserRole;
 import com.urbanpark.parking.user.domain.enums.UserStatus;
