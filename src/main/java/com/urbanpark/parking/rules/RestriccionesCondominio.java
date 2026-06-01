@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "restricciones_condominio")
+@Table(name = "restricciones_condominio") //Reglas y Restricciones del condominio
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
