@@ -27,7 +27,7 @@ public class PermisoUsuario {
     private String tipoPermiso;  // CREAR_RESERVA, VER_REPORTES, ADMINISTRAR, GESTIONAR_USUARIOS
 
     @Column(name = "recurso", nullable = false, length = 50)
-    private String recurso;  // PARQUEO, VEHICULO, USUARIO, CONDOMINIO
+    private String recurso;  // PARQUEO, VEHICULO, USUARIO, CONDOMINIO, DATOS
 
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
