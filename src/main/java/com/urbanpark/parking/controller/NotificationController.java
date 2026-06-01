@@ -23,15 +23,24 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotificationsByCondominio(condominioId));
     }
 
+    @GetMapping("/condominio/{condominioId}/unread")
+    public ResponseEntity<List<Notification>> getUnreadNotifications(@PathVariable String condominioId) {
+        return ResponseEntity.ok(notificationService.getUnreadNotifications(condominioId));
+    }
+
     @PostMapping
     public ResponseEntity<Notification> triggerNotification(
             @RequestParam String condominioId,
             @RequestParam String title,
             @RequestParam String message,
             @RequestParam NotificationType type) {
-        
+
         Notification created = notificationService.createNotification(condominioId, title, message, type);
         return ResponseEntity.ok(created);
     }
-}
 
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<Notification> markAsRead(@PathVariable Long id) {
+        return ResponseEntity.ok(notificationService.markAsRead(id));
+    }
+}
