@@ -44,23 +44,4 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
-    @ExceptionHandler(com.urbanpark.parking.modules.access.exception.VehicleNotAuthorizedException.class)
-    public ResponseEntity<Object> handleVehicleNotAuthorized(com.urbanpark.parking.modules.access.exception.VehicleNotAuthorizedException ex) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", HttpStatus.UNAUTHORIZED.value());
-        body.put("error", "Acceso denegado al vehículo");
-        body.put("message", ex.getMessage());
-        return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(com.urbanpark.parking.modules.access.exception.AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccessDenied(com.urbanpark.parking.modules.access.exception.AccessDeniedException ex) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", HttpStatus.FORBIDDEN.value());
-        body.put("error", "Acceso denegado");
-        body.put("message", ex.getMessage());
-        return new ResponseEntity<>(body, HttpStatus.FORBIDDEN);
-    }
 }
