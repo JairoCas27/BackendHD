@@ -1,5 +1,6 @@
 package com.urbanpark.parking.domain.security_operations;
 
+import com.urbanpark.parking.domain.audit.AuditService;
 import com.urbanpark.parking.domain.integration.UsuarioSesion;
 import com.urbanpark.parking.domain.integration.UsuarioSesionRepository;
 import com.urbanpark.parking.domain.security_operations.dto.IncidenteRequest;
@@ -8,12 +9,14 @@ import com.urbanpark.parking.domain.security_operations.dto.ResolucionRequest;
 import com.urbanpark.parking.domain.tenant.TenantContext;
 import com.urbanpark.parking.shared.enums.EstadoIncidente;
 import com.urbanpark.parking.shared.enums.NivelIncidente;
+import com.urbanpark.parking.shared.enums.TipoAccionAudit;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -22,9 +25,9 @@ public class IncidenteService {
 
     private final IncidenteRepository incidenteRepository;
     private final UsuarioSesionRepository usuarioSesionRepository;
+    private final AuditService auditService;
 
     public IncidenteResponse reportar(IncidenteRequest request) {
-        // Validar que la sesion existe y pertenece a este tenant
         UsuarioSesion sesion = usuarioSesionRepository.findById(request.getSesionId())
                 .orElseThrow(() -> new EntityNotFoundException("Sesion no encontrada"));
 
@@ -32,7 +35,7 @@ public class IncidenteService {
             throw new IllegalArgumentException("La sesion no pertenece a este condominio");
         }
 
-        Incidente incidente = Incidente.builder()
+        Incidente incidente = incidenteRepository.save(Incidente.builder()
                 .tenantId(TenantContext.getTenantId())
                 .sesionId(sesion.getId())
                 .accesoId(request.getAccesoId())
@@ -40,45 +43,49 @@ public class IncidenteService {
                 .nivel(request.getNivel())
                 .estado(EstadoIncidente.ABIERTO)
                 .placaInvolucrada(request.getPlacaInvolucrada() != null
-                        ? request.getPlacaInvolucrada().toUpperCase()
-                        : null)
-                .build();
+                        ? request.getPlacaInvolucrada().toUpperCase() : null)
+                .build());
 
-        return toResponse(incidenteRepository.save(incidente), sesion);
+        auditService.registrar(
+                TenantContext.getTenantId(),
+                sesion.getId(),
+                TipoAccionAudit.INCIDENTE_REPORTADO,
+                "Incidente", incidente.getId().toString(),
+                Map.of(
+                        "nivel", incidente.getNivel().name(),
+                        "descripcion", incidente.getDescripcion(),
+                        "reportadoPor", sesion.getNombre(),
+                        "rol", sesion.getRol(),
+                        "placa", incidente.getPlacaInvolucrada() != null
+                                ? incidente.getPlacaInvolucrada() : "N/A"
+                )
+        );
+
+        return toResponse(incidente, sesion);
     }
 
-    // ADMIN_CONDOMINIO → lista todos del tenant
     public List<IncidenteResponse> listarTodos() {
         return incidenteRepository.findAllByTenantId(TenantContext.getTenantId())
-                .stream()
-                .map(i -> toResponse(i, getSesion(i.getSesionId())))
-                .toList();
+                .stream().map(i -> toResponse(i, getSesion(i.getSesionId()))).toList();
     }
 
-    // AGENTE / PROPIETARIO → solo los suyos por sesionId
     public List<IncidenteResponse> listarMios(UUID sesionId) {
         validarSesionDelTenant(sesionId);
         return incidenteRepository
                 .findAllBySesionIdAndTenantId(sesionId, TenantContext.getTenantId())
-                .stream()
-                .map(i -> toResponse(i, getSesion(i.getSesionId())))
-                .toList();
+                .stream().map(i -> toResponse(i, getSesion(i.getSesionId()))).toList();
     }
 
     public List<IncidenteResponse> listarPorEstado(EstadoIncidente estado) {
         return incidenteRepository
                 .findAllByTenantIdAndEstado(TenantContext.getTenantId(), estado)
-                .stream()
-                .map(i -> toResponse(i, getSesion(i.getSesionId())))
-                .toList();
+                .stream().map(i -> toResponse(i, getSesion(i.getSesionId()))).toList();
     }
 
     public List<IncidenteResponse> listarPorNivel(NivelIncidente nivel) {
         return incidenteRepository
                 .findAllByTenantIdAndNivel(TenantContext.getTenantId(), nivel)
-                .stream()
-                .map(i -> toResponse(i, getSesion(i.getSesionId())))
-                .toList();
+                .stream().map(i -> toResponse(i, getSesion(i.getSesionId()))).toList();
     }
 
     public IncidenteResponse buscarPorId(UUID id) {
@@ -86,14 +93,26 @@ public class IncidenteService {
         return toResponse(incidente, getSesion(incidente.getSesionId()));
     }
 
-    // Solo ADMIN_CONDOMINIO
-    public IncidenteResponse cambiarEstado(UUID id, EstadoIncidente estado) {
+    public IncidenteResponse cambiarEstado(UUID id, EstadoIncidente nuevoEstado) {
         Incidente incidente = findById(id);
-        incidente.setEstado(estado);
-        return toResponse(incidenteRepository.save(incidente), getSesion(incidente.getSesionId()));
+        EstadoIncidente estadoAnterior = incidente.getEstado();
+        incidente.setEstado(nuevoEstado);
+        incidenteRepository.save(incidente);
+
+        auditService.registrar(
+                TenantContext.getTenantId(),
+                incidente.getSesionId(),
+                TipoAccionAudit.ESPACIO_ESTADO_CAMBIADO,
+                "Incidente", id.toString(),
+                Map.of(
+                        "estadoAnterior", estadoAnterior.name(),
+                        "estadoNuevo", nuevoEstado.name()
+                )
+        );
+
+        return toResponse(incidente, getSesion(incidente.getSesionId()));
     }
 
-    // Solo ADMIN_CONDOMINIO
     public IncidenteResponse resolver(UUID id, ResolucionRequest request) {
         Incidente incidente = findById(id);
 
@@ -104,14 +123,33 @@ public class IncidenteService {
         incidente.setResolucion(request.getResolucion());
         incidente.setEstado(EstadoIncidente.RESUELTO);
         incidente.setResueltoAt(LocalDateTime.now());
+        incidenteRepository.save(incidente);
 
-        return toResponse(incidenteRepository.save(incidente), getSesion(incidente.getSesionId()));
+        auditService.registrar(
+                TenantContext.getTenantId(),
+                incidente.getSesionId(),
+                TipoAccionAudit.INCIDENTE_RESUELTO,
+                "Incidente", id.toString(),
+                Map.of("resolucion", request.getResolucion())
+        );
+
+        return toResponse(incidente, getSesion(incidente.getSesionId()));
     }
 
-    // Solo ADMIN_CONDOMINIO
     public void eliminar(UUID id) {
         Incidente incidente = findById(id);
         incidenteRepository.delete(incidente);
+
+        auditService.registrar(
+                TenantContext.getTenantId(),
+                incidente.getSesionId(),
+                TipoAccionAudit.INCIDENTE_REPORTADO,
+                "Incidente", id.toString(),
+                Map.of(
+                        "accion", "ELIMINADO",
+                        "descripcion", incidente.getDescripcion()
+                )
+        );
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────
@@ -119,7 +157,6 @@ public class IncidenteService {
     private Incidente findById(UUID id) {
         Incidente incidente = incidenteRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Incidente no encontrado"));
-
         if (!incidente.getTenantId().equals(TenantContext.getTenantId())) {
             throw new EntityNotFoundException("Incidente no encontrado");
         }
@@ -127,8 +164,7 @@ public class IncidenteService {
     }
 
     private UsuarioSesion getSesion(UUID sesionId) {
-        return usuarioSesionRepository.findById(sesionId)
-                .orElse(null);
+        return usuarioSesionRepository.findById(sesionId).orElse(null);
     }
 
     private void validarSesionDelTenant(UUID sesionId) {

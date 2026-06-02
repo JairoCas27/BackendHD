@@ -1,5 +1,7 @@
 package com.urbanpark.parking.config;
 
+import com.urbanpark.parking.domain.audit.AuditLog;
+import com.urbanpark.parking.domain.audit.AuditLogRepository;
 import com.urbanpark.parking.domain.integration.UsuarioSesion;
 import com.urbanpark.parking.domain.integration.UsuarioSesionRepository;
 import com.urbanpark.parking.domain.saas.plan.Plan;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -32,6 +35,7 @@ public class DataInitializer implements CommandLineRunner {
     private final CondominioRepository condominioRepository;
     private final UsuarioSesionRepository usuarioSesionRepository;
     private final IncidenteRepository incidenteRepository;
+    private final AuditLogRepository auditLogRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -42,6 +46,7 @@ public class DataInitializer implements CommandLineRunner {
         crearCondominios();
         crearSesionesEjemplo();
         crearIncidentesEjemplo();
+        crearAuditLogsEjemplo();
     }
 
     // ─── USUARIOS SAAS ───────────────────────────────────────────────
@@ -223,10 +228,8 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
-        // Usamos el primer condominio (Residencial Las Magnolias) para las sesiones
         UUID tenantId = condominios.get(0).getId();
 
-        // Agente de seguridad
         usuarioSesionRepository.save(UsuarioSesion.builder()
                 .externalUserId(101L)
                 .condominioId(tenantId)
@@ -235,7 +238,6 @@ public class DataInitializer implements CommandLineRunner {
                 .rol("AGENTE_SEGURIDAD")
                 .build());
 
-        // Propietario
         usuarioSesionRepository.save(UsuarioSesion.builder()
                 .externalUserId(202L)
                 .condominioId(tenantId)
@@ -244,7 +246,6 @@ public class DataInitializer implements CommandLineRunner {
                 .rol("PROPIETARIO")
                 .build());
 
-        // Admin del condominio
         usuarioSesionRepository.save(UsuarioSesion.builder()
                 .externalUserId(303L)
                 .condominioId(tenantId)
@@ -270,73 +271,240 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
-        // Tomamos sesion del agente y del propietario
         UsuarioSesion sesionAgente = sesiones.stream()
                 .filter(s -> "AGENTE_SEGURIDAD".equals(s.getRol()))
-                .findFirst()
-                .orElse(sesiones.get(0));
+                .findFirst().orElse(sesiones.get(0));
 
         UsuarioSesion sesionPropietario = sesiones.stream()
                 .filter(s -> "PROPIETARIO".equals(s.getRol()))
-                .findFirst()
-                .orElse(sesiones.get(0));
+                .findFirst().orElse(sesiones.get(0));
 
         UUID tenantId = sesionAgente.getCondominioId();
 
-        // Incidente 1 — Agente, CRITICO, ABIERTO
         incidenteRepository.save(Incidente.builder()
-                .tenantId(tenantId)
-                .sesionId(sesionAgente.getId())
+                .tenantId(tenantId).sesionId(sesionAgente.getId())
                 .descripcion("Vehiculo sin placa intento ingresar por la rampa norte de manera forzada")
-                .nivel(NivelIncidente.CRITICO)
-                .estado(EstadoIncidente.ABIERTO)
-                .placaInvolucrada(null)
+                .nivel(NivelIncidente.CRITICO).estado(EstadoIncidente.ABIERTO)
                 .build());
 
-        // Incidente 2 — Agente, ALTO, EN_REVISION
         incidenteRepository.save(Incidente.builder()
-                .tenantId(tenantId)
-                .sesionId(sesionAgente.getId())
+                .tenantId(tenantId).sesionId(sesionAgente.getId())
                 .descripcion("Se detecto persona sospechosa rondando el nivel B2 durante la madrugada")
-                .nivel(NivelIncidente.ALTO)
-                .estado(EstadoIncidente.EN_REVISION)
-                .placaInvolucrada(null)
+                .nivel(NivelIncidente.ALTO).estado(EstadoIncidente.EN_REVISION)
                 .build());
 
-        // Incidente 3 — Propietario, MEDIO, EN_REVISION
         incidenteRepository.save(Incidente.builder()
-                .tenantId(tenantId)
-                .sesionId(sesionPropietario.getId())
+                .tenantId(tenantId).sesionId(sesionPropietario.getId())
                 .descripcion("Mi vehiculo amaneció con rayones en la puerta del copiloto. Espacio C-08")
-                .nivel(NivelIncidente.MEDIO)
-                .estado(EstadoIncidente.EN_REVISION)
+                .nivel(NivelIncidente.MEDIO).estado(EstadoIncidente.EN_REVISION)
                 .placaInvolucrada("ABC-123")
                 .build());
 
-        // Incidente 4 — Propietario, BAJO, RESUELTO
         incidenteRepository.save(Incidente.builder()
-                .tenantId(tenantId)
-                .sesionId(sesionPropietario.getId())
+                .tenantId(tenantId).sesionId(sesionPropietario.getId())
                 .descripcion("Fuga menor de aceite detectada en espacio B-14, mancha en el piso")
-                .nivel(NivelIncidente.BAJO)
-                .estado(EstadoIncidente.RESUELTO)
+                .nivel(NivelIncidente.BAJO).estado(EstadoIncidente.RESUELTO)
                 .placaInvolucrada("XYZ-789")
-                .resolucion("Se limpio el area y se notificó al propietario del vehiculo via correo")
+                .resolucion("Se limpio el area y se notifico al propietario via correo")
                 .resueltoAt(LocalDateTime.now().minusHours(3))
                 .build());
 
-        // Incidente 5 — Agente, MEDIO, CERRADO
         incidenteRepository.save(Incidente.builder()
-                .tenantId(tenantId)
-                .sesionId(sesionAgente.getId())
+                .tenantId(tenantId).sesionId(sesionAgente.getId())
                 .descripcion("Alarma del vehiculo activada por mas de 20 minutos sin respuesta del propietario")
-                .nivel(NivelIncidente.MEDIO)
-                .estado(EstadoIncidente.RESUELTO)
+                .nivel(NivelIncidente.MEDIO).estado(EstadoIncidente.RESUELTO)
                 .placaInvolucrada("DEF-456")
-                .resolucion("Se contacto al propietario, desactivo la alarma de forma remota. Caso cerrado.")
+                .resolucion("Se contacto al propietario, desactivo la alarma de forma remota.")
                 .resueltoAt(LocalDateTime.now().minusDays(1))
                 .build());
 
         log.info("5 incidentes de ejemplo creados para tenant: {}", tenantId);
+    }
+
+    // ─── AUDIT LOGS DE EJEMPLO ───────────────────────────────────────
+
+    private void crearAuditLogsEjemplo() {
+        if (auditLogRepository.count() > 0) {
+            log.info("Audit logs ya existen, omitiendo.");
+            return;
+        }
+
+        List<UsuarioSesion> sesiones = usuarioSesionRepository.findAll();
+        if (sesiones.isEmpty()) {
+            log.warn("No hay sesiones, omitiendo audit logs.");
+            return;
+        }
+
+        UsuarioSesion sesionAgente = sesiones.stream()
+                .filter(s -> "AGENTE_SEGURIDAD".equals(s.getRol()))
+                .findFirst().orElse(sesiones.get(0));
+
+        UsuarioSesion sesionPropietario = sesiones.stream()
+                .filter(s -> "PROPIETARIO".equals(s.getRol()))
+                .findFirst().orElse(sesiones.get(0));
+
+        UsuarioSesion sesionAdmin = sesiones.stream()
+                .filter(s -> "ADMIN_CONDOMINIO".equals(s.getRol()))
+                .findFirst().orElse(sesiones.get(0));
+
+        UUID tenantId = sesionAgente.getCondominioId();
+
+        List<Incidente> incidentes = incidenteRepository.findAll();
+
+        // 1 — Login del agente
+        auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .usuarioId(sesionAgente.getId())
+                .accion(TipoAccionAudit.LOGIN)
+                .entidad("UsuarioSesion")
+                .entidadId(sesionAgente.getId().toString())
+                .detalle(Map.of(
+                        "email", sesionAgente.getEmail(),
+                        "rol", sesionAgente.getRol(),
+                        "condominio", "Residencial Las Magnolias"
+                ))
+                .build());
+
+        // 2 — Login del propietario
+        auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .usuarioId(sesionPropietario.getId())
+                .accion(TipoAccionAudit.LOGIN)
+                .entidad("UsuarioSesion")
+                .entidadId(sesionPropietario.getId().toString())
+                .detalle(Map.of(
+                        "email", sesionPropietario.getEmail(),
+                        "rol", sesionPropietario.getRol(),
+                        "condominio", "Residencial Las Magnolias"
+                ))
+                .build());
+
+        // 3 — Login fallido (simulado)
+        auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .usuarioId(null)
+                .accion(TipoAccionAudit.LOGIN_FALLIDO)
+                .entidad("UsuarioSesion")
+                .entidadId(null)
+                .detalle(Map.of(
+                        "email", "intruso@hack.com",
+                        "motivo", "Credenciales invalidas",
+                        "condominio", "Residencial Las Magnolias"
+                ))
+                .build());
+
+        // 4 — Incidente reportado por agente (si existe)
+        if (!incidentes.isEmpty()) {
+            Incidente inc1 = incidentes.get(0);
+            auditLogRepository.save(AuditLog.builder()
+                    .tenantId(tenantId)
+                    .usuarioId(sesionAgente.getId())
+                    .accion(TipoAccionAudit.INCIDENTE_REPORTADO)
+                    .entidad("Incidente")
+                    .entidadId(inc1.getId().toString())
+                    .detalle(Map.of(
+                            "nivel", inc1.getNivel().name(),
+                            "descripcion", inc1.getDescripcion(),
+                            "reportadoPor", sesionAgente.getNombre(),
+                            "rol", sesionAgente.getRol(),
+                            "placa", "N/A"
+                    ))
+                    .build());
+        }
+
+        // 5 — Incidente reportado por propietario (si existe)
+        if (incidentes.size() >= 3) {
+            Incidente inc3 = incidentes.get(2);
+            auditLogRepository.save(AuditLog.builder()
+                    .tenantId(tenantId)
+                    .usuarioId(sesionPropietario.getId())
+                    .accion(TipoAccionAudit.INCIDENTE_REPORTADO)
+                    .entidad("Incidente")
+                    .entidadId(inc3.getId().toString())
+                    .detalle(Map.of(
+                            "nivel", inc3.getNivel().name(),
+                            "descripcion", inc3.getDescripcion(),
+                            "reportadoPor", sesionPropietario.getNombre(),
+                            "rol", sesionPropietario.getRol(),
+                            "placa", inc3.getPlacaInvolucrada() != null
+                                    ? inc3.getPlacaInvolucrada() : "N/A"
+                    ))
+                    .build());
+        }
+
+        // 6 — Incidente resuelto por admin
+        if (incidentes.size() >= 4) {
+            Incidente inc4 = incidentes.get(3);
+            auditLogRepository.save(AuditLog.builder()
+                    .tenantId(tenantId)
+                    .usuarioId(sesionAdmin.getId())
+                    .accion(TipoAccionAudit.INCIDENTE_RESUELTO)
+                    .entidad("Incidente")
+                    .entidadId(inc4.getId().toString())
+                    .detalle(Map.of(
+                            "resolucion", inc4.getResolucion() != null
+                                    ? inc4.getResolucion() : "Sin detalle",
+                            "resolvedBy", sesionAdmin.getNombre()
+                    ))
+                    .build());
+        }
+
+        // 7 — Entrada de vehiculo registrada por agente
+        auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .usuarioId(sesionAgente.getId())
+                .accion(TipoAccionAudit.ENTRADA_VEHICULO)
+                .entidad("Acceso")
+                .entidadId("seed-acceso-001")
+                .detalle(Map.of(
+                        "placa", "ABC-123",
+                        "tipo", "RESIDENTE",
+                        "espacio", "A-05",
+                        "registradoPor", sesionAgente.getNombre()
+                ))
+                .build());
+
+        // 8 — Salida de vehiculo
+        auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .usuarioId(sesionAgente.getId())
+                .accion(TipoAccionAudit.SALIDA_VEHICULO)
+                .entidad("Acceso")
+                .entidadId("seed-acceso-001")
+                .detalle(Map.of(
+                        "placa", "ABC-123",
+                        "duracionMinutos", 45,
+                        "registradoPor", sesionAgente.getNombre()
+                ))
+                .build());
+
+        // 9 — Acceso denegado
+        auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .usuarioId(sesionAgente.getId())
+                .accion(TipoAccionAudit.ACCESO_DENEGADO)
+                .entidad("Acceso")
+                .entidadId("seed-acceso-002")
+                .detalle(Map.of(
+                        "placa", "ZZZ-999",
+                        "motivo", "Vehiculo no registrado en el condominio",
+                        "registradoPor", sesionAgente.getNombre()
+                ))
+                .build());
+
+        // 10 — Usuario activado por admin
+        auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .usuarioId(sesionAdmin.getId())
+                .accion(TipoAccionAudit.USUARIO_ACTIVADO)
+                .entidad("UsuarioSesion")
+                .entidadId(sesionPropietario.getId().toString())
+                .detalle(Map.of(
+                        "email", sesionPropietario.getEmail(),
+                        "activadoPor", sesionAdmin.getNombre()
+                ))
+                .build());
+
+        log.info("10 audit logs de ejemplo creados para tenant: {}", tenantId);
     }
 }

@@ -1,13 +1,16 @@
 package com.urbanpark.parking.domain.saas.plan;
 
+import com.urbanpark.parking.domain.audit.AuditService;
 import com.urbanpark.parking.domain.saas.plan.dto.PlanRequestDTO;
 import com.urbanpark.parking.domain.saas.plan.dto.PlanResponseDTO;
 import com.urbanpark.parking.shared.enums.EstadoPlan;
+import com.urbanpark.parking.shared.enums.TipoAccionAudit;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -15,19 +18,16 @@ import java.util.UUID;
 public class PlanService {
 
     private final PlanRepository planRepository;
+    private final AuditService auditService;
 
     public List<PlanResponseDTO> listarActivos() {
         return planRepository.findAllByEstado(EstadoPlan.ACTIVO)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                .stream().map(this::toResponse).toList();
     }
 
     public List<PlanResponseDTO> listarTodos() {
         return planRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                .stream().map(this::toResponse).toList();
     }
 
     public PlanResponseDTO crear(PlanRequestDTO request) {
@@ -36,16 +36,28 @@ public class PlanService {
                     "Ya existe un plan con el nombre: " + request.getNombre());
         }
 
-        Plan plan = Plan.builder()
+        Plan plan = planRepository.save(Plan.builder()
                 .nombre(request.getNombre())
                 .descripcion(request.getDescripcion())
                 .precio(request.getPrecio())
                 .maxEspacios(request.getMaxEspacios())
                 .maxUsuarios(request.getMaxUsuarios())
                 .estado(EstadoPlan.ACTIVO)
-                .build();
+                .build());
 
-        return toResponse(planRepository.save(plan));
+        auditService.registrar(
+                null, null,
+                TipoAccionAudit.PLAN_CREADO,
+                "Plan", plan.getId().toString(),
+                Map.of(
+                        "nombre", plan.getNombre(),
+                        "precio", plan.getPrecio().toString(),
+                        "maxEspacios", plan.getMaxEspacios(),
+                        "maxUsuarios", plan.getMaxUsuarios()
+                )
+        );
+
+        return toResponse(plan);
     }
 
     public PlanResponseDTO actualizar(UUID id, PlanRequestDTO request) {
@@ -55,19 +67,59 @@ public class PlanService {
         plan.setPrecio(request.getPrecio());
         plan.setMaxEspacios(request.getMaxEspacios());
         plan.setMaxUsuarios(request.getMaxUsuarios());
-        return toResponse(planRepository.save(plan));
-    }
+        Plan actualizado = planRepository.save(plan);
 
-    public void desactivar(UUID id) {
-        Plan plan = findById(id);
-        plan.setEstado(EstadoPlan.INACTIVO);
-        planRepository.save(plan);
+        auditService.registrar(
+                null, null,
+                TipoAccionAudit.PLAN_ACTUALIZADO,
+                "Plan", id.toString(),
+                Map.of(
+                        "nombre", actualizado.getNombre(),
+                        "precio", actualizado.getPrecio().toString(),
+                        "maxEspacios", actualizado.getMaxEspacios(),
+                        "maxUsuarios", actualizado.getMaxUsuarios()
+                )
+        );
+
+        return toResponse(actualizado);
     }
 
     public void activar(UUID id) {
         Plan plan = findById(id);
         plan.setEstado(EstadoPlan.ACTIVO);
         planRepository.save(plan);
+
+        auditService.registrar(
+                null, null,
+                TipoAccionAudit.PLAN_ACTIVADO,
+                "Plan", id.toString(),
+                Map.of("nombre", plan.getNombre())
+        );
+    }
+
+    public void desactivar(UUID id) {
+        Plan plan = findById(id);
+        plan.setEstado(EstadoPlan.INACTIVO);
+        planRepository.save(plan);
+
+        auditService.registrar(
+                null, null,
+                TipoAccionAudit.PLAN_DESACTIVADO,
+                "Plan", id.toString(),
+                Map.of("nombre", plan.getNombre())
+        );
+    }
+
+    public void eliminar(UUID id) {
+        Plan plan = findById(id);
+        planRepository.delete(plan);
+
+        auditService.registrar(
+                null, null,
+                TipoAccionAudit.PLAN_ELIMINADO,
+                "Plan", id.toString(),
+                Map.of("nombre", plan.getNombre())
+        );
     }
 
     public Plan findById(UUID id) {
@@ -86,10 +138,5 @@ public class PlanService {
                 .estado(plan.getEstado().name())
                 .createdAt(plan.getCreatedAt())
                 .build();
-    }
-
-    public void eliminar(UUID id) {
-        Plan plan = findById(id);
-        planRepository.delete(plan);
     }
 }
