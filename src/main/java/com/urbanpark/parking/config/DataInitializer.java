@@ -135,6 +135,7 @@ public class DataInitializer implements CommandLineRunner {
                 "Residencial Las Magnolias",
                 "https://sistemagestioncondominios-backend.onrender.com",
                 "Roberto Salas Fuentes",
+                "45112233",
                 "rsalas@lasmagnolias.pe",
                 "+51 998 112 233",
                 "Estandar"
@@ -144,6 +145,7 @@ public class DataInitializer implements CommandLineRunner {
                 "Torres del Sol Miraflores",
                 "https://sistemagestioncondominios-backend.onrender.com",
                 "Patricia Quispe Huanca",
+                "72556677",
                 "pquispe@torressol.pe",
                 "+51 955 443 221",
                 "Profesional"
@@ -153,6 +155,7 @@ public class DataInitializer implements CommandLineRunner {
                 "Condominio Vista Verde",
                 "https://sistemagestioncondominios-backend.onrender.com",
                 "Jorge Mamani Ccopa",
+                "61998877",
                 "jmamani@vistaverde.pe",
                 "+51 941 887 766",
                 "Basico"
@@ -160,8 +163,9 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void crearCondominio(String nombre, String apiBaseUrl,
-                                 String titularNombre, String titularEmail,
-                                 String titularTelefono, String planNombre) {
+                                 String titularNombre, String titularDni,
+                                 String titularEmail, String titularTelefono,
+                                 String planNombre) {
         if (condominioRepository.existsByTitularEmail(titularEmail)) {
             log.info("Condominio '{}' ya existe, omitiendo.", nombre);
             return;
@@ -176,6 +180,7 @@ public class DataInitializer implements CommandLineRunner {
                 .nombre(nombre)
                 .apiBaseUrl(apiBaseUrl)
                 .titularNombre(titularNombre)
+                .titularDni(titularDni)
                 .titularEmail(titularEmail)
                 .titularTelefono(titularTelefono)
                 .estado(EstadoCondominio.ACTIVO)
@@ -183,14 +188,15 @@ public class DataInitializer implements CommandLineRunner {
                 .build());
 
         if (!saasUserRepository.existsByEmail(titularEmail)) {
-            String nombreSinEspacios = titularNombre.replaceAll("\\s+", "");
-            String prefijo = nombreSinEspacios.substring(0, Math.min(4, nombreSinEspacios.length()));
+            String sinEspacios = titularNombre.replaceAll("\\s+", "");
+            String prefijo = sinEspacios.substring(0, Math.min(4, sinEspacios.length()));
             String password = "Urban" + prefijo + "@" + java.time.LocalDate.now().getYear();
 
             saasUserRepository.save(SaasUser.builder()
                     .email(titularEmail)
                     .password(passwordEncoder.encode(password))
                     .nombre(titularNombre)
+                    .dni(titularDni)
                     .telefono(titularTelefono)
                     .cargo("Titular de Condominio")
                     .rol(RolSaas.CLIENTE)
@@ -198,7 +204,7 @@ public class DataInitializer implements CommandLineRunner {
                     .esBase(false)
                     .build());
 
-            log.info("Condominio + CLIENTE creado: {} | pwd: {}", titularEmail, password);
+            log.info("Condominio + CLIENTE creado: {} | dni: {} | pwd: {}", titularEmail, titularDni, password);
         }
     }
 }
