@@ -30,17 +30,14 @@ public class Condominio {
     @Column(name = "titular_nombre", nullable = false)
     private String titularNombre;
 
+    @Column(name = "titular_dni", nullable = false, unique = true)
+    private String titularDni;
+
     @Column(name = "titular_email", nullable = false, unique = true)
     private String titularEmail;
 
     @Column(name = "titular_telefono")
     private String titularTelefono;
-
-    @Column(name = "sync_email")
-    private String syncEmail;
-
-    @Column(name = "sync_password")
-    private String syncPassword;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

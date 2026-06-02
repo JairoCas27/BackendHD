@@ -40,10 +40,9 @@ public class CondominioService {
                 .nombre(request.getNombre())
                 .apiBaseUrl(request.getApiBaseUrl())
                 .titularNombre(request.getTitularNombre())
+                .titularDni(request.getTitularDni())
                 .titularEmail(request.getTitularEmail())
                 .titularTelefono(request.getTitularTelefono())
-                .syncEmail(request.getSyncEmail())
-                .syncPassword(request.getSyncPassword())
                 .estado(EstadoCondominio.ACTIVO)
                 .plan(plan)
                 .build();
@@ -54,6 +53,7 @@ public class CondominioService {
                 .email(request.getTitularEmail())
                 .password(passwordEncoder.encode(generarPasswordInicial(request)))
                 .nombre(request.getTitularNombre())
+                .dni(request.getTitularDni())
                 .telefono(request.getTitularTelefono())
                 .cargo("Titular de Condominio")
                 .rol(RolSaas.CLIENTE)
@@ -82,13 +82,29 @@ public class CondominioService {
         Plan plan = planRepository.findById(request.getPlanId())
                 .orElseThrow(() -> new EntityNotFoundException("Plan no encontrado"));
 
+        // Si cambia el email, verificar que no exista en otro condominio
+        if (!condominio.getTitularEmail().equals(request.getTitularEmail())) {
+            if (condominioRepository.existsByTitularEmail(request.getTitularEmail())) {
+                throw new IllegalArgumentException("Ya existe un condominio con ese email de titular");
+            }
+        }
+
+        // Actualizar DNI y email en el SaasUser CLIENTE asociado
+        saasUserRepository.findByEmail(condominio.getTitularEmail())
+                .ifPresent(cliente -> {
+                    cliente.setNombre(request.getTitularNombre());
+                    cliente.setDni(request.getTitularDni());
+                    cliente.setEmail(request.getTitularEmail());
+                    cliente.setTelefono(request.getTitularTelefono());
+                    saasUserRepository.save(cliente);
+                });
+
         condominio.setNombre(request.getNombre());
         condominio.setApiBaseUrl(request.getApiBaseUrl());
         condominio.setTitularNombre(request.getTitularNombre());
+        condominio.setTitularDni(request.getTitularDni());
         condominio.setTitularEmail(request.getTitularEmail());
         condominio.setTitularTelefono(request.getTitularTelefono());
-        condominio.setSyncEmail(request.getSyncEmail());
-        condominio.setSyncPassword(request.getSyncPassword());
         condominio.setPlan(plan);
 
         return toResponse(condominioRepository.save(condominio));
@@ -134,9 +150,9 @@ public class CondominioService {
                 .nombre(c.getNombre())
                 .apiBaseUrl(c.getApiBaseUrl())
                 .titularNombre(c.getTitularNombre())
+                .titularDni(c.getTitularDni())
                 .titularEmail(c.getTitularEmail())
                 .titularTelefono(c.getTitularTelefono())
-                .syncEmail(c.getSyncEmail())
                 .planId(c.getPlan().getId())
                 .planNombre(c.getPlan().getNombre())
                 .estado(c.getEstado())

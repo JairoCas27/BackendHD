@@ -15,11 +15,9 @@ public class CondominioResponse {
 
     // Titular
     private String titularNombre;
+    private String titularDni;
     private String titularEmail;
     private String titularTelefono;
-
-    // Sync (solo visible para SUPERADMIN/ADMIN, nunca exponer al cliente)
-    private String syncEmail;
 
     // Plan
     private UUID planId;
