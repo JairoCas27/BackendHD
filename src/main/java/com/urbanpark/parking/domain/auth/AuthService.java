@@ -4,6 +4,8 @@ import com.urbanpark.parking.domain.auth.dto.AuthResponse;
 import com.urbanpark.parking.domain.auth.dto.ExternalLoginRequest;
 import com.urbanpark.parking.domain.auth.dto.ExternalLoginResult;
 import com.urbanpark.parking.domain.auth.dto.UsuarioExternoDTO;
+import com.urbanpark.parking.domain.integration.UsuarioSesion;
+import com.urbanpark.parking.domain.integration.UsuarioSesionRepository;
 import com.urbanpark.parking.domain.tenant.Condominio;
 import com.urbanpark.parking.domain.tenant.CondominioRepository;
 import com.urbanpark.parking.shared.enums.EstadoCondominio;
@@ -19,27 +21,35 @@ public class AuthService {
 
     private final CondominioRepository condominioRepository;
     private final ExternalTokenValidator tokenValidator;
+    private final UsuarioSesionRepository usuarioSesionRepository;
 
     public AuthResponse login(ExternalLoginRequest request) {
 
-        // 1. Validar que el condominio existe y esta ACTIVO
+        // 1. Validar que el condominio existe y está ACTIVO
         Condominio condominio = condominioRepository.findById(request.getCondominioId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Condominio no encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Condominio no encontrado"));
 
         if (condominio.getEstado() != EstadoCondominio.ACTIVO) {
-            throw new IllegalArgumentException(
-                    "El condominio no esta activo en el sistema");
+            throw new IllegalArgumentException("El condominio no esta activo en el sistema");
         }
 
-        // 2. Autenticar en la API externa y obtener tokens + datos del usuario
+        // 2. Autenticar en la API externa → tokens + datos del usuario
         ExternalLoginResult result = tokenValidator.validate(request, condominio);
         UsuarioExternoDTO externo = result.getUsuario();
 
-        log.info("[{}] Login exitoso para: {} (rol: {})",
+        // 3. Registrar sesión (historial de logins)
+        usuarioSesionRepository.save(UsuarioSesion.builder()
+                .externalUserId(externo.getId())
+                .condominioId(condominio.getId())
+                .email(externo.getCorreo())
+                .nombre(externo.getNombres() + " " + externo.getApellidos())
+                .rol(externo.getRol())
+                .build());
+
+        log.info("[{}] Login registrado: {} ({})",
                 condominio.getNombre(), externo.getCorreo(), externo.getRol());
 
-        // 3. Mapear y devolver respuesta propia
+        // 4. Mapear y devolver respuesta
         return AuthResponse.builder()
                 .condominioId(condominio.getId())
                 .condominioNombre(condominio.getNombre())
@@ -52,10 +62,6 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Extrae solo el valor del token desde el par "access_token=eyJ..."
-     * para no exponer la forma de cookie al cliente.
-     */
     private String extraerValorToken(String cookiePar) {
         if (cookiePar == null) return null;
         int idx = cookiePar.indexOf('=');
