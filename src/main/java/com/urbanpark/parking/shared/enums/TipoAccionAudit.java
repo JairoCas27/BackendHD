@@ -1,0 +1,47 @@
+package com.urbanpark.parking.shared.enums;
+
+public enum TipoAccionAudit {
+    // Auth
+    LOGIN,
+    LOGOUT,
+    LOGIN_FALLIDO,
+
+    // Accesos vehiculares
+    ENTRADA_VEHICULO,
+    SALIDA_VEHICULO,
+    ACCESO_DENEGADO,
+
+    // Usuarios
+    USUARIO_CREADO,
+    USUARIO_ACTUALIZADO,
+    USUARIO_ACTIVADO,
+    USUARIO_DESACTIVADO,
+
+    // Vehículos
+    VEHICULO_REGISTRADO,
+    VEHICULO_ACTUALIZADO,
+    VEHICULO_DESACTIVADO,
+
+    // Visitantes
+    VISITANTE_REGISTRADO,
+    VISITANTE_REVOCADO,
+
+    // Espacios
+    ESPACIO_CREADO,
+    ESPACIO_ESTADO_CAMBIADO,
+
+    // Reglas
+    REGLA_CREADA,
+    REGLA_ACTUALIZADA,
+    REGLA_ACTIVADA,
+    REGLA_DESACTIVADA,
+
+    // Incidentes
+    INCIDENTE_REPORTADO,
+    INCIDENTE_RESUELTO,
+
+    // Condominios
+    CONDOMINIO_CREADO,
+    CONDOMINIO_ACTIVADO,
+    CONDOMINIO_DESACTIVADO
+}
