@@ -1,7 +1,6 @@
 package com.urbanpark.parking.domain.auth;
 
-import com.urbanpark.parking.domain.auth.dto.AuthResponse;
-import com.urbanpark.parking.domain.auth.dto.ExternalLoginRequest;
+import com.urbanpark.parking.domain.auth.dto.*;
 import com.urbanpark.parking.shared.dto.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,11 +13,21 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final SaasAuthService saasAuthService;
 
+    // Login usuarios del condominio (ADMIN_CONDOMINIO, PROPIETARIO, AGENTE_SEGURIDAD)
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @RequestBody @Valid ExternalLoginRequest request) {
-        AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success("Login exitoso", response));
+        return ResponseEntity.ok(
+                ApiResponse.success("Login exitoso", authService.login(request)));
+    }
+
+    // Login usuarios internos del SaaS (SUPERADMIN, ADMIN)
+    @PostMapping("/saas/login")
+    public ResponseEntity<ApiResponse<SaasAuthResponse>> saasLogin(
+            @RequestBody @Valid SaasLoginRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.success("Login exitoso", saasAuthService.login(request)));
     }
 }

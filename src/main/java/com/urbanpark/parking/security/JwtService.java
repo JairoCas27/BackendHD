@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -32,6 +31,17 @@ public class JwtService {
                 .subject(userId.toString())
                 .claim("tenant_id", tenantId.toString())
                 .claim("rol", rol)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getKey())
+                .compact();
+    }
+
+    public String generateSaasToken(UUID userId, String rol) {
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("rol", rol)
+                .claim("tipo", "SAAS")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getKey())
@@ -66,6 +76,10 @@ public class JwtService {
 
     public String extractRol(String token) {
         return extractAllClaims(token).get("rol", String.class);
+    }
+
+    public String extractTipo(String token) {
+        return extractAllClaims(token).get("tipo", String.class);
     }
 
     public boolean isTokenValid(String token) {
