@@ -23,17 +23,20 @@ public class TenantFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String tenantId = (String) request.getAttribute("tenantId");
+            String tenantId  = (String) request.getAttribute("tenantId");
+            String usuarioId = (String) request.getAttribute("userId");
 
             if (tenantId != null) {
                 TenantContext.setTenantId(UUID.fromString(tenantId));
             }
 
+            if (usuarioId != null) {
+                TenantContext.setUsuarioId(UUID.fromString(usuarioId));
+            }
+
             filterChain.doFilter(request, response);
         } finally {
-            // SIEMPRE limpiar al final del request para evitar
-            // contaminación entre threads del pool
-            TenantContext.clear();
+            TenantContext.clear(); // limpia tenant + usuario
         }
     }
 }

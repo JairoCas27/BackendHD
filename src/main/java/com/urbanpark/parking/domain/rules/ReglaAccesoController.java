@@ -59,4 +59,10 @@ public class ReglaAccesoController {
         reglaService.desactivar(id);
         return ResponseEntity.ok(ApiResponse.success("Regla desactivada", null));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        reglaService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.success("Regla eliminada", null));
+    }
 }
