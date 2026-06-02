@@ -1,6 +1,7 @@
 package com.urbanpark.parking.domain.auth;
 
 import com.urbanpark.parking.domain.auth.dto.ExternalLoginRequest;
+import com.urbanpark.parking.domain.auth.dto.ExternalLoginResult;
 import com.urbanpark.parking.domain.auth.dto.UsuarioExternoDTO;
 import com.urbanpark.parking.domain.tenant.Condominio;
 import lombok.RequiredArgsConstructor;
@@ -20,18 +21,29 @@ public class ExternalTokenValidator {
 
     private final RestTemplate restTemplate;
 
-    public UsuarioExternoDTO validate(ExternalLoginRequest request, Condominio condominio) {
-        String cookiePar = doExternalLogin(request.getEmail(), request.getPassword(), condominio);
-        return doGetMe(cookiePar, condominio);
+    /**
+     * Login completo: autentica en la API externa y retorna usuario + ambos tokens.
+     */
+    public ExternalLoginResult validate(ExternalLoginRequest request, Condominio condominio) {
+        ExternalTokenPair tokens = doExternalLogin(
+                request.getEmail(), request.getPassword(), condominio);
+        UsuarioExternoDTO usuario = doGetMe(tokens.getAccessToken(), condominio);
+        return ExternalLoginResult.builder()
+                .usuario(usuario)
+                .accessToken(tokens.getAccessToken())
+                .refreshToken(tokens.getRefreshToken())
+                .build();
     }
 
-    // Retorna "access_token=eyJ...abc" — usado por IntegrationClient
+    /**
+     * Solo cookie access_token — usado por IntegrationClient para sync.
+     */
     public String obtenerCookieParaSync(String email, String password, Condominio condominio) {
-        return doExternalLogin(email, password, condominio);
+        return doExternalLogin(email, password, condominio).getAccessToken();
     }
 
-    // Retorna "access_token=eyJ...abc" (par completo listo para Cookie header)
-    private String doExternalLogin(String email, String password, Condominio condominio) {
+    private ExternalTokenPair doExternalLogin(String email, String password,
+                                              Condominio condominio) {
         String loginUrl = condominio.getApiBaseUrl() + "/api/auth/login";
 
         HttpHeaders headers = new HttpHeaders();
@@ -55,19 +67,27 @@ public class ExternalTokenValidator {
 
             if (setCookies == null || setCookies.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "El sistema del condominio no devolvió cookies");
+                        "El sistema del condominio no devolvio cookies");
             }
 
-            return setCookies.stream()
+            String accessToken = setCookies.stream()
                     .filter(c -> c.startsWith("access_token="))
                     .findFirst()
                     .map(c -> c.split(";")[0].trim())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Cookie access_token no encontrada en respuesta del condominio"));
+                            "Cookie access_token no encontrada"));
+
+            String refreshToken = setCookies.stream()
+                    .filter(c -> c.startsWith("refresh_token="))
+                    .findFirst()
+                    .map(c -> c.split(";")[0].trim())
+                    .orElse(null);
+
+            return new ExternalTokenPair(accessToken, refreshToken);
 
         } catch (HttpClientErrorException.Unauthorized e) {
             throw new IllegalArgumentException(
-                    "Credenciales inválidas en el sistema del condominio");
+                    "Credenciales invalidas en el sistema del condominio");
         } catch (HttpClientErrorException e) {
             log.error("[{}] Error en login externo: {}",
                     condominio.getNombre(), e.getMessage());
@@ -76,11 +96,11 @@ public class ExternalTokenValidator {
         }
     }
 
-    private UsuarioExternoDTO doGetMe(String cookiePar, Condominio condominio) {
+    private UsuarioExternoDTO doGetMe(String accessTokenCookie, Condominio condominio) {
         String meUrl = condominio.getApiBaseUrl() + "/api/auth/me";
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.COOKIE, cookiePar);
+        headers.set(HttpHeaders.COOKIE, accessTokenCookie);
 
         try {
             ResponseEntity<UsuarioExternoDTO> response = restTemplate.exchange(
@@ -95,16 +115,20 @@ public class ExternalTokenValidator {
             }
 
             throw new IllegalArgumentException(
-                    "No se pudo obtener información del usuario del condominio");
+                    "No se pudo obtener informacion del usuario del condominio");
 
         } catch (HttpClientErrorException.Unauthorized e) {
-            throw new IllegalArgumentException(
-                    "Sesión expirada en el sistema del condominio");
+            throw new IllegalArgumentException("Sesion expirada en el sistema del condominio");
         } catch (HttpClientErrorException e) {
-            log.error("[{}] Error en /me externo: {}",
-                    condominio.getNombre(), e.getMessage());
-            throw new IllegalArgumentException(
-                    "Error al obtener datos del usuario externo");
+            log.error("[{}] Error en /me externo: {}", condominio.getNombre(), e.getMessage());
+            throw new IllegalArgumentException("Error al obtener datos del usuario externo");
         }
+    }
+
+    // ─── Inner record para el par de tokens ──────────────────────────
+    @lombok.Value
+    public static class ExternalTokenPair {
+        String accessToken;
+        String refreshToken;
     }
 }

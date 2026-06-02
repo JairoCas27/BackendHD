@@ -7,10 +7,14 @@ import java.util.UUID;
 @Data
 @Builder
 public class AuthResponse {
+    private UUID condominioId;
+    private String condominioNombre;
+
+    private Long externalUserId;
+    private String nombre;
+    private String email;
+    private String rol;
+
     private String accessToken;
     private String refreshToken;
-    private String rol;
-    private UUID tenantId;
-    private UUID userId;
-    private String nombre;
 }

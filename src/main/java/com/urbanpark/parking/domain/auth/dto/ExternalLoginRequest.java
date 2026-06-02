@@ -9,13 +9,13 @@ import java.util.UUID;
 @Data
 public class ExternalLoginRequest {
 
-    @Email(message = "Email inválido")
+    @NotNull(message = "El condominioId es obligatorio")
+    private UUID condominioId;
+
+    @Email(message = "Email invalido")
     @NotBlank(message = "El email es obligatorio")
     private String email;
 
     @NotBlank(message = "El password es obligatorio")
     private String password;
-
-    @NotNull(message = "El tenantId es obligatorio")
-    private UUID tenantId;
 }
