@@ -47,4 +47,11 @@ public class SaasUserController {
         saasUserService.activar(id);
         return ResponseEntity.ok(ApiResponse.success("Usuario activado", null));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        saasUserService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.success("Usuario eliminado correctamente", null));
+    }
 }

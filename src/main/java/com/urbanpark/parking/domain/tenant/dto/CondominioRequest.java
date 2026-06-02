@@ -18,11 +18,16 @@ public class CondominioRequest {
     @NotBlank(message = "El nombre del titular es obligatorio")
     private String titularNombre;
 
-    @Email(message = "Email inválido")
+    @Email(message = "Email invalido")
     @NotBlank(message = "El email del titular es obligatorio")
     private String titularEmail;
 
     private String titularTelefono;
+
+    @Email(message = "Email de sincronizacion invalido")
+    private String syncEmail;
+
+    private String syncPassword;
 
     @NotNull(message = "El plan es obligatorio")
     private UUID planId;

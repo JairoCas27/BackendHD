@@ -29,12 +29,22 @@ public class SaasUser {
     @Column(nullable = false)
     private String nombre;
 
+    @Column(unique = true)
+    private String dni;
+
+    private String telefono;
+
+    private String cargo;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RolSaas rol;
 
     @Column(nullable = false)
     private boolean activo;
+
+    @Column(name = "es_base", nullable = false)
+    private boolean esBase;   // true = no se puede eliminar
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

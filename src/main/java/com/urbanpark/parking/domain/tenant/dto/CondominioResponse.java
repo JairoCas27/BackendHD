@@ -12,10 +12,24 @@ public class CondominioResponse {
     private UUID id;
     private String nombre;
     private String apiBaseUrl;
+
+    // Titular
     private String titularNombre;
     private String titularEmail;
     private String titularTelefono;
-    private EstadoCondominio estado;
+
+    // Sync (solo visible para SUPERADMIN/ADMIN, nunca exponer al cliente)
+    private String syncEmail;
+
+    // Plan
+    private UUID planId;
     private String planNombre;
+
+    // Estado
+    private EstadoCondominio estado;
+
+    // Usuario CLIENTE generado automaticamente
+    private UUID clienteUserId;
+
     private LocalDateTime fechaRegistro;
 }

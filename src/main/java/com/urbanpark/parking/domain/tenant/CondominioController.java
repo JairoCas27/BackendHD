@@ -16,7 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/condominios")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('SUPERADMIN')")
+@PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
 public class CondominioController {
 
     private final CondominioService condominioService;
@@ -42,7 +42,8 @@ public class CondominioController {
     public ResponseEntity<ApiResponse<CondominioResponse>> actualizar(
             @PathVariable UUID id,
             @RequestBody @Valid CondominioRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(condominioService.actualizar(id, request)));
+        return ResponseEntity.ok(ApiResponse.success(
+                "Condominio actualizado", condominioService.actualizar(id, request)));
     }
 
     @PatchMapping("/{id}/estado")
@@ -51,5 +52,11 @@ public class CondominioController {
             @RequestParam EstadoCondominio estado) {
         condominioService.cambiarEstado(id, estado);
         return ResponseEntity.ok(ApiResponse.success("Estado actualizado", null));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        condominioService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.success("Condominio eliminado", null));
     }
 }

@@ -87,4 +87,9 @@ public class PlanService {
                 .createdAt(plan.getCreatedAt())
                 .build();
     }
+
+    public void eliminar(UUID id) {
+        Plan plan = findById(id);
+        planRepository.delete(plan);
+    }
 }

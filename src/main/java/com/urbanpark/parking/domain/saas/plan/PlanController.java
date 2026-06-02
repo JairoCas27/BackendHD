@@ -20,10 +20,14 @@ public class PlanController {
 
     private final PlanService planService;
 
+    // ─── PÚBLICOS (sin JWT) ───────────────────────────────────────────
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<PlanResponseDTO>>> listar() {
         return ResponseEntity.ok(ApiResponse.success(planService.listarActivos()));
     }
+
+    // ─── REQUIEREN SUPERADMIN o ADMIN ────────────────────────────────
 
     @GetMapping("/todos")
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
@@ -32,7 +36,7 @@ public class PlanController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<PlanResponseDTO>> crear(
             @RequestBody @Valid PlanRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,7 +44,7 @@ public class PlanController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<PlanResponseDTO>> actualizar(
             @PathVariable UUID id,
             @RequestBody @Valid PlanRequestDTO request) {
@@ -49,16 +53,23 @@ public class PlanController {
     }
 
     @PatchMapping("/{id}/desactivar")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
         planService.desactivar(id);
         return ResponseEntity.ok(ApiResponse.success("Plan desactivado", null));
     }
 
     @PatchMapping("/{id}/activar")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> activar(@PathVariable UUID id) {
         planService.activar(id);
         return ResponseEntity.ok(ApiResponse.success("Plan activado", null));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        planService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.success("Plan eliminado", null));
     }
 }

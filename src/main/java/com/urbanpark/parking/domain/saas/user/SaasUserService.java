@@ -69,9 +69,23 @@ public class SaasUserService {
                 .id(user.getId())
                 .email(user.getEmail())
                 .nombre(user.getNombre())
+                .dni(user.getDni())
+                .telefono(user.getTelefono())
+                .cargo(user.getCargo())
                 .rol(user.getRol().name())
                 .activo(user.isActivo())
+                .esBase(user.isEsBase())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+    public void eliminar(UUID id) {
+        SaasUser user = findById(id);
+
+        if (user.isEsBase()) {
+            throw new IllegalArgumentException(
+                    "No se puede eliminar el usuario base del sistema.");
+        }
+
+        saasUserRepository.delete(user);
     }
 }
