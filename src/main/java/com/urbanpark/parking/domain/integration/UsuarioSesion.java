@@ -19,11 +19,9 @@ public class UsuarioSesion {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // ID del usuario en el sistema externo del condominio
     @Column(name = "external_user_id", nullable = false)
     private Long externalUserId;
 
-    // Condominio al que pertenece
     @Column(name = "condominio_id", nullable = false)
     private UUID condominioId;
 
@@ -35,6 +33,10 @@ public class UsuarioSesion {
 
     @Column(nullable = false)
     private String rol;
+
+    // Token cookie del sistema externo — "access_token=eyJ..."
+    @Column(name = "access_token", length = 2048)
+    private String accessToken;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

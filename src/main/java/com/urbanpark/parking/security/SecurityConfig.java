@@ -38,17 +38,29 @@ public class SecurityConfig {
             "/webjars/**"
     };
 
-    // ─── Solo SUPERADMIN ──────────────────────────────────────────────
+    // ─── Solo SUPERADMIN ─────────────────────────────────────────────
     private static final String[] SUPERADMIN_ONLY_ROUTES = {
             "/api/v1/saas/usuarios/**",
             "/api/v1/audit/saas"
     };
 
-    // ─── SUPERADMIN o ADMIN ───────────────────────────────────────────
+    // ─── SUPERADMIN o ADMIN (SaaS) ───────────────────────────────────
     private static final String[] ADMIN_ROUTES = {
             "/api/v1/condominios/**",
             "/api/v1/planes/todos",
             "/api/v1/audit/**"
+    };
+
+    // ─── Rutas de tenant (roles del condominio) ───────────────────────
+    // Solo requieren estar autenticados a nivel de SecurityConfig.
+    // El control fino de roles lo hacen los @PreAuthorize de cada controller.
+    private static final String[] TENANT_ROUTES = {
+            "/api/v1/vehiculos/**",
+            "/api/v1/reglas/**",
+            "/api/v1/incidentes/**",
+            "/api/v1/accesos/**",
+            "/api/v1/espacios/**",
+            "/api/v1/usuarios/**"
     };
 
     @Bean
@@ -59,25 +71,26 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
-                        // Sin JWT
+                        // ── Públicas ──────────────────────────────────
                         .requestMatchers(PUBLIC_ROUTES).permitAll()
 
-                        // GET /api/v1/planes → publico
+                        // ── Planes: GET público, escritura solo SaaS admins ──
                         .requestMatchers(HttpMethod.GET, "/api/v1/planes").permitAll()
-
-                        // Escritura en planes → SUPERADMIN o ADMIN
                         .requestMatchers(HttpMethod.POST,   "/api/v1/planes").hasAnyRole("SUPERADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.PUT,    "/api/v1/planes/**").hasAnyRole("SUPERADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.PATCH,  "/api/v1/planes/**").hasAnyRole("SUPERADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/planes/**").hasAnyRole("SUPERADMIN", "ADMIN")
 
-                        // Solo SUPERADMIN
+                        // ── Solo SUPERADMIN ───────────────────────────
                         .requestMatchers(SUPERADMIN_ONLY_ROUTES).hasRole("SUPERADMIN")
 
-                        // SUPERADMIN o ADMIN
+                        // ── SUPERADMIN o ADMIN SaaS ───────────────────
                         .requestMatchers(ADMIN_ROUTES).hasAnyRole("SUPERADMIN", "ADMIN")
 
-                        // Cualquier otra ruta requiere autenticacion
+                        // ── Rutas de tenant → autenticado + @PreAuthorize ──
+                        .requestMatchers(TENANT_ROUTES).authenticated()
+
+                        // ── Cualquier otra ruta → autenticado ─────────
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

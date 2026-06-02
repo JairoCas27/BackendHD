@@ -9,6 +9,7 @@ import com.urbanpark.parking.domain.integration.UsuarioSesion;
 import com.urbanpark.parking.domain.integration.UsuarioSesionRepository;
 import com.urbanpark.parking.domain.tenant.Condominio;
 import com.urbanpark.parking.domain.tenant.CondominioRepository;
+import com.urbanpark.parking.security.JwtService;
 import com.urbanpark.parking.shared.enums.EstadoCondominio;
 import com.urbanpark.parking.shared.enums.TipoAccionAudit;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,6 +28,7 @@ public class AuthService {
     private final ExternalTokenValidator tokenValidator;
     private final UsuarioSesionRepository usuarioSesionRepository;
     private final AuditService auditService;
+    private final JwtService jwtService;              // ← agrega esto
 
     public AuthResponse login(ExternalLoginRequest request) {
 
@@ -42,11 +44,9 @@ public class AuthService {
             result = tokenValidator.validate(request, condominio);
         } catch (Exception e) {
             auditService.registrar(
-                    condominio.getId(),
-                    null,
+                    condominio.getId(), null,
                     TipoAccionAudit.LOGIN_FALLIDO,
-                    "UsuarioSesion",
-                    null,
+                    "UsuarioSesion", null,
                     Map.of(
                             "email", request.getEmail(),
                             "condominio", condominio.getNombre(),
@@ -64,17 +64,22 @@ public class AuthService {
                 .email(externo.getCorreo())
                 .nombre(externo.getNombres() + " " + externo.getApellidos())
                 .rol(externo.getRol())
+                .accessToken(result.getAccessToken())
                 .build());
 
-        log.info("[{}] Login registrado: {} ({})",
+        String jwtPropio = jwtService.generateToken(
+                sesion.getId(),       // subject = UUID de UsuarioSesion
+                condominio.getId(),   // tenant_id
+                externo.getRol()      // rol: "PROPIETARIO", "ADMIN_CONDOMINIO", etc.
+        );
+
+        log.info("[{}] Login OK: {} ({})",
                 condominio.getNombre(), externo.getCorreo(), externo.getRol());
 
         auditService.registrar(
-                condominio.getId(),
-                sesion.getId(),
+                condominio.getId(), sesion.getId(),
                 TipoAccionAudit.LOGIN,
-                "UsuarioSesion",
-                sesion.getId().toString(),
+                "UsuarioSesion", sesion.getId().toString(),
                 Map.of(
                         "email", externo.getCorreo(),
                         "rol", externo.getRol(),
@@ -89,14 +94,8 @@ public class AuthService {
                 .nombre(externo.getNombres() + " " + externo.getApellidos())
                 .email(externo.getCorreo())
                 .rol(externo.getRol())
-                .accessToken(extraerValorToken(result.getAccessToken()))
-                .refreshToken(extraerValorToken(result.getRefreshToken()))
+                .accessToken(jwtPropio)      // ← JWT propio, no el cookie externo
+                .refreshToken(null)
                 .build();
-    }
-
-    private String extraerValorToken(String cookiePar) {
-        if (cookiePar == null) return null;
-        int idx = cookiePar.indexOf('=');
-        return idx >= 0 ? cookiePar.substring(idx + 1) : cookiePar;
     }
 }

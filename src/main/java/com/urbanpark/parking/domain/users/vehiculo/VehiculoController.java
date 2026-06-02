@@ -19,25 +19,27 @@ public class VehiculoController {
 
     private final VehiculoService vehiculoService;
 
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'PROPIETARIO')")
-    public ResponseEntity<ApiResponse<VehiculoResponse>> crear(
-            @RequestBody @Valid VehiculoRequest request) {
-        return ResponseEntity.status(201)
-                .body(ApiResponse.success("Vehículo registrado", vehiculoService.crear(request)));
+    // Solo PROPIETARIO e INQUILINO ven sus propios vehiculos
+    @GetMapping("/mios")
+    @PreAuthorize("hasAnyRole('PROPIETARIO', 'INQUILINO')")
+    public ResponseEntity<ApiResponse<List<VehiculoResponse>>> listarMios() {
+        return ResponseEntity.ok(ApiResponse.success(vehiculoService.listarMios()));
     }
 
+    // Admin y seguridad ven todos
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'AGENTE_SEGURIDAD')")
     public ResponseEntity<ApiResponse<List<VehiculoResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.success(vehiculoService.listarTodos()));
     }
 
-    @GetMapping("/usuario/{usuarioId}")
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'PROPIETARIO')")
+    // Admin puede buscar vehiculos de un usuario especifico por su ID externo
+    @GetMapping("/usuario/{externalUserId}")
+    @PreAuthorize("hasRole('ADMIN_CONDOMINIO')")
     public ResponseEntity<ApiResponse<List<VehiculoResponse>>> listarPorUsuario(
-            @PathVariable UUID usuarioId) {
-        return ResponseEntity.ok(ApiResponse.success(vehiculoService.listarPorUsuario(usuarioId)));
+            @PathVariable Long externalUserId) {
+        return ResponseEntity.ok(
+                ApiResponse.success(vehiculoService.listarPorUsuarioExterno(externalUserId)));
     }
 
     @GetMapping("/placa/{placa}")
@@ -51,6 +53,14 @@ public class VehiculoController {
     @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'PROPIETARIO', 'AGENTE_SEGURIDAD')")
     public ResponseEntity<ApiResponse<VehiculoResponse>> buscar(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(vehiculoService.buscarPorId(id)));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'PROPIETARIO')")
+    public ResponseEntity<ApiResponse<VehiculoResponse>> crear(
+            @RequestBody @Valid VehiculoRequest request) {
+        return ResponseEntity.status(201)
+                .body(ApiResponse.success("Vehículo registrado", vehiculoService.crear(request)));
     }
 
     @PutMapping("/{id}")
