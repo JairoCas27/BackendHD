@@ -1,4 +1,2 @@
 package com.urbanpark.parking.shared.enums;
-
-public class TipoIncidente {
-}
+public enum TipoIncidente { ACCESO_NO_AUTORIZADO, VEHICULO_SOSPECHOSO, OTRO }

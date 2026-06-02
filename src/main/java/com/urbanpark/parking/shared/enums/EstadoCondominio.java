@@ -1,4 +1,2 @@
 package com.urbanpark.parking.shared.enums;
-
-public class EstadoCondominio {
-}
+public enum EstadoCondominio { ACTIVO, INACTIVO, SUSPENDIDO }

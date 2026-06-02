@@ -1,4 +1,2 @@
 package com.urbanpark.parking.shared.enums;
-
-public class RolSaas {
-}
+public enum RolSaas { SUPERADMIN, ADMIN }

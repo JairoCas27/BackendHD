@@ -1,4 +1,2 @@
 package com.urbanpark.parking.shared.enums;
-
-public class TipoEvento {
-}
+public enum TipoEvento { ENTRADA, SALIDA }

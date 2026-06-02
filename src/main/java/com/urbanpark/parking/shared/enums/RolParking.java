@@ -1,4 +1,2 @@
 package com.urbanpark.parking.shared.enums;
-
-public class RolParking {
-}
+public enum RolParking { ADMIN_CONDOMINIO, PROPIETARIO, AGENTE_SEGURIDAD }
