@@ -1,7 +1,7 @@
 package com.urbanpark.parking.domain.security_operations;
 
-import com.urbanpark.parking.shared.enums.NivelIncidente;
 import com.urbanpark.parking.shared.enums.EstadoIncidente;
+import com.urbanpark.parking.shared.enums.NivelIncidente;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -24,8 +24,9 @@ public class Incidente {
     @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;
 
-    @Column(name = "agente_id", nullable = false)
-    private UUID agenteId;
+    // Referencia a la sesion del usuario que reportó el incidente
+    @Column(name = "sesion_id", nullable = false)
+    private UUID sesionId;
 
     @Column(name = "acceso_id")
     private UUID accesoId;

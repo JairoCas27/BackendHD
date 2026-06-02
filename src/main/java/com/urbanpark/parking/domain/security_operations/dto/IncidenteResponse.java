@@ -11,7 +11,13 @@ import java.util.UUID;
 @Builder
 public class IncidenteResponse {
     private UUID id;
-    private UUID agenteId;
+    private UUID tenantId;
+
+    // Datos de quien reportó
+    private UUID sesionId;
+    private String reportadoPor;   // nombre del usuario de la sesion
+    private String rolReportador;  // rol del usuario de la sesion
+
     private UUID accesoId;
     private String descripcion;
     private NivelIncidente nivel;

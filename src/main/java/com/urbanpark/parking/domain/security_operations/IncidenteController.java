@@ -22,8 +22,9 @@ public class IncidenteController {
 
     private final IncidenteService incidenteService;
 
+    // AGENTE_SEGURIDAD y PROPIETARIO pueden reportar
     @PostMapping
-    @PreAuthorize("hasAnyRole('AGENTE_SEGURIDAD', 'ADMIN_CONDOMINIO')")
+    @PreAuthorize("hasAnyRole('AGENTE_SEGURIDAD', 'PROPIETARIO')")
     public ResponseEntity<ApiResponse<IncidenteResponse>> reportar(
             @RequestBody @Valid IncidenteRequest request) {
         return ResponseEntity.status(201)
@@ -31,9 +32,10 @@ public class IncidenteController {
                         incidenteService.reportar(request)));
     }
 
+    // ADMIN_CONDOMINIO lista todos con filtros opcionales
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'AGENTE_SEGURIDAD')")
-    public ResponseEntity<ApiResponse<List<IncidenteResponse>>> listar(
+    @PreAuthorize("hasRole('ADMIN_CONDOMINIO')")
+    public ResponseEntity<ApiResponse<List<IncidenteResponse>>> listarTodos(
             @RequestParam(required = false) EstadoIncidente estado,
             @RequestParam(required = false) NivelIncidente nivel) {
 
@@ -50,35 +52,47 @@ public class IncidenteController {
         return ResponseEntity.ok(ApiResponse.success(incidentes));
     }
 
+    // AGENTE y PROPIETARIO solo ven los suyos por sesionId
+    @GetMapping("/mis-incidentes")
+    @PreAuthorize("hasAnyRole('AGENTE_SEGURIDAD', 'PROPIETARIO')")
+    public ResponseEntity<ApiResponse<List<IncidenteResponse>>> listarMios(
+            @RequestParam UUID sesionId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                incidenteService.listarMios(sesionId)));
+    }
+
+    // Cualquier rol autenticado puede ver el detalle
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'AGENTE_SEGURIDAD')")
+    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'AGENTE_SEGURIDAD', 'PROPIETARIO')")
     public ResponseEntity<ApiResponse<IncidenteResponse>> buscar(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(incidenteService.buscarPorId(id)));
     }
 
-    @GetMapping("/agente/{agenteId}")
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'AGENTE_SEGURIDAD')")
-    public ResponseEntity<ApiResponse<List<IncidenteResponse>>> listarPorAgente(
-            @PathVariable UUID agenteId) {
-        return ResponseEntity.ok(ApiResponse.success(
-                incidenteService.listarPorAgente(agenteId)));
-    }
-
+    // Solo ADMIN_CONDOMINIO cambia estado
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('ADMIN_CONDOMINIO')")
     public ResponseEntity<ApiResponse<IncidenteResponse>> cambiarEstado(
             @PathVariable UUID id,
             @RequestParam EstadoIncidente estado) {
         return ResponseEntity.ok(ApiResponse.success(
-                incidenteService.cambiarEstado(id, estado)));
+                "Estado actualizado", incidenteService.cambiarEstado(id, estado)));
     }
 
+    // Solo ADMIN_CONDOMINIO resuelve
     @PatchMapping("/{id}/resolver")
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'AGENTE_SEGURIDAD')")
+    @PreAuthorize("hasRole('ADMIN_CONDOMINIO')")
     public ResponseEntity<ApiResponse<IncidenteResponse>> resolver(
             @PathVariable UUID id,
             @RequestBody @Valid ResolucionRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Incidente resuelto",
                 incidenteService.resolver(id, request)));
+    }
+
+    // Solo ADMIN_CONDOMINIO elimina
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN_CONDOMINIO')")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
+        incidenteService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.success("Incidente eliminado", null));
     }
 }

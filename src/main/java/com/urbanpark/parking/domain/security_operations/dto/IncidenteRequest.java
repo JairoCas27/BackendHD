@@ -9,12 +9,13 @@ import java.util.UUID;
 @Data
 public class IncidenteRequest {
 
-    @NotNull(message = "El agenteId es obligatorio")
-    private UUID agenteId;
+    // ID de la sesion activa del usuario que reporta (obtenida del login)
+    @NotNull(message = "El sesionId es obligatorio")
+    private UUID sesionId;
 
     private UUID accesoId;
 
-    @NotBlank(message = "La descripción es obligatoria")
+    @NotBlank(message = "La descripcion es obligatoria")
     private String descripcion;
 
     @NotNull(message = "El nivel es obligatorio")

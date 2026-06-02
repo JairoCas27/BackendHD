@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 public class ResolucionRequest {
 
-    @NotBlank(message = "La resolución es obligatoria")
+    @NotBlank(message = "La resolucion es obligatoria")
     private String resolucion;
 }

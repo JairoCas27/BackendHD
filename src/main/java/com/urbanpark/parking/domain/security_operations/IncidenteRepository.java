@@ -15,5 +15,7 @@ public interface IncidenteRepository extends JpaRepository<Incidente, UUID> {
 
     List<Incidente> findAllByTenantIdAndNivel(UUID tenantId, NivelIncidente nivel);
 
-    List<Incidente> findAllByAgenteIdAndTenantId(UUID agenteId, UUID tenantId);
+    List<Incidente> findAllBySesionIdAndTenantId(UUID sesionId, UUID tenantId);
+
+    boolean existsByIdAndTenantId(UUID id, UUID tenantId);
 }
