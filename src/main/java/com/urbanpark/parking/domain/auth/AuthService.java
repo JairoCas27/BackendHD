@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,22 +29,21 @@ public class AuthService {
 
         // 1. Buscar el condominio por tenantId
         Condominio condominio = condominioRepository.findById(request.getTenantId())
-                .orElseThrow(() -> new EntityNotFoundException("Condominio no encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Condominio no encontrado"));
 
         // 2. Verificar que el condominio está activo
         if (condominio.getEstado() != EstadoCondominio.ACTIVO) {
-            throw new IllegalArgumentException("El condominio está inactivo o suspendido");
+            throw new IllegalStateException(
+                    "El condominio está inactivo o suspendido");
         }
 
-        // 3. Hacer login en el condominio → obtener cookie → llamar /me
-        UsuarioExternoDTO usuarioExterno = externalTokenValidator.validate(request, condominio);
+        // 3. Login en el condominio → /me → datos del usuario externo
+        // Si las credenciales son incorrectas, ExternalTokenValidator lanza excepción
+        UsuarioExternoDTO usuarioExterno =
+                externalTokenValidator.validate(request, condominio);
 
-        // 4. Verificar que el usuario está activo en el condominio
-        if (!usuarioExterno.isActivo()) {
-            throw new IllegalArgumentException("Usuario inactivo en el sistema del condominio");
-        }
-
-        // 5. Buscar o crear el usuario interno del SaaS
+        // 4. Buscar o crear usuario interno del SaaS
         UsuarioCondominio usuario = usuarioCondominioRepository
                 .findByExternalIdAndTenantId(
                         String.valueOf(usuarioExterno.getId()),
@@ -53,14 +51,14 @@ public class AuthService {
                 )
                 .orElseGet(() -> crearUsuarioInterno(usuarioExterno, condominio));
 
-        // 6. Actualizar datos y última sincronización
+        // 5. Actualizar datos con la info más reciente del condominio
         usuario.setNombre(usuarioExterno.getNombres() + " " + usuarioExterno.getApellidos());
         usuario.setEmail(usuarioExterno.getCorreo());
         usuario.setRolParking(mapearRol(usuarioExterno.getRol()));
         usuario.setSyncedAt(LocalDateTime.now());
         usuarioCondominioRepository.save(usuario);
 
-        // 7. Generar JWT interno del SaaS
+        // 6. Generar JWT interno del SaaS
         String accessToken = jwtService.generateToken(
                 usuario.getId(),
                 condominio.getId(),
@@ -79,7 +77,9 @@ public class AuthService {
                 .build();
     }
 
-    private UsuarioCondominio crearUsuarioInterno(UsuarioExternoDTO dto, Condominio condominio) {
+    private UsuarioCondominio crearUsuarioInterno(
+            UsuarioExternoDTO dto, Condominio condominio) {
+
         UsuarioCondominio nuevo = UsuarioCondominio.builder()
                 .externalId(String.valueOf(dto.getId()))
                 .tenantId(condominio.getId())
@@ -98,8 +98,10 @@ public class AuthService {
 
         return switch (rolExterno.toUpperCase()) {
             case "ADMINISTRADOR_CONDOMINIO" -> RolParking.ADMIN_CONDOMINIO;
-            case "SEGURIDAD", "VIGILANTE"   -> RolParking.AGENTE_SEGURIDAD;
-            default                         -> RolParking.PROPIETARIO;
+            case "AGENTE_SEGURIDAD",
+                 "SEGURIDAD",
+                 "VIGILANTE"               -> RolParking.AGENTE_SEGURIDAD;
+            default                        -> RolParking.PROPIETARIO;
         };
     }
 }

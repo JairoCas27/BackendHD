@@ -5,11 +5,8 @@ import lombok.Data;
 @Data
 public class UsuarioExternoDTO {
     private Long id;
+    private String correo;
     private String nombres;
     private String apellidos;
-    private String correo;
-    private String telefono;
-    private String rol;
-    private boolean activo;
-    private Long condominioId;
+    private String rol; // ADMINISTRADOR_CONDOMINIO | AGENTE_SEGURIDAD | PROPIETARIO
 }

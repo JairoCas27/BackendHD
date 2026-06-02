@@ -21,65 +21,72 @@ public class ExternalTokenValidator {
     private final RestTemplate restTemplate;
 
     public UsuarioExternoDTO validate(ExternalLoginRequest request, Condominio condominio) {
-        String cookie = doExternalLogin(request, condominio);
-        return doGetMe(cookie, condominio);
+        String cookiePar = doExternalLogin(request.getEmail(), request.getPassword(), condominio);
+        return doGetMe(cookiePar, condominio);
     }
 
-    private String doExternalLogin(ExternalLoginRequest request, Condominio condominio) {
+    // Retorna "access_token=eyJ...abc" — usado por IntegrationClient
+    public String obtenerCookieParaSync(String email, String password, Condominio condominio) {
+        return doExternalLogin(email, password, condominio);
+    }
+
+    // Retorna "access_token=eyJ...abc" (par completo listo para Cookie header)
+    private String doExternalLogin(String email, String password, Condominio condominio) {
         String loginUrl = condominio.getApiBaseUrl() + "/api/auth/login";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> body = Map.of(
-                "email", request.getEmail(),
-                "password", request.getPassword(),
+                "email",      email,
+                "password",   password,
                 "rememberMe", true
         );
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
         try {
             ResponseEntity<Void> response = restTemplate.exchange(
                     loginUrl,
                     HttpMethod.POST,
-                    entity,
+                    new HttpEntity<>(body, headers),
                     Void.class
             );
 
-            List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
+            List<String> setCookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
 
-            if (cookies == null || cookies.isEmpty()) {
-                throw new IllegalArgumentException("El sistema del condominio no devolvió cookies");
+            if (setCookies == null || setCookies.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "El sistema del condominio no devolvió cookies");
             }
 
-            return cookies.stream()
+            return setCookies.stream()
                     .filter(c -> c.startsWith("access_token="))
                     .findFirst()
-                    .map(c -> c.split(";")[0])
-                    .orElseThrow(() -> new IllegalArgumentException("Cookie access_token no encontrada"));
+                    .map(c -> c.split(";")[0].trim())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Cookie access_token no encontrada en respuesta del condominio"));
 
         } catch (HttpClientErrorException.Unauthorized e) {
-            throw new IllegalArgumentException("Credenciales inválidas en el sistema del condominio");
+            throw new IllegalArgumentException(
+                    "Credenciales inválidas en el sistema del condominio");
         } catch (HttpClientErrorException e) {
-            log.error("Error en login externo: {}", e.getMessage());
-            throw new IllegalArgumentException("Error al autenticar en el sistema del condominio");
+            log.error("[{}] Error en login externo: {}",
+                    condominio.getNombre(), e.getMessage());
+            throw new IllegalArgumentException(
+                    "Error al autenticar en el sistema del condominio");
         }
     }
 
-    private UsuarioExternoDTO doGetMe(String cookie, Condominio condominio) {
+    private UsuarioExternoDTO doGetMe(String cookiePar, Condominio condominio) {
         String meUrl = condominio.getApiBaseUrl() + "/api/auth/me";
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.COOKIE, cookie);
-
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        headers.set(HttpHeaders.COOKIE, cookiePar);
 
         try {
             ResponseEntity<UsuarioExternoDTO> response = restTemplate.exchange(
                     meUrl,
                     HttpMethod.GET,
-                    entity,
+                    new HttpEntity<>(headers),
                     UsuarioExternoDTO.class
             );
 
@@ -87,13 +94,17 @@ public class ExternalTokenValidator {
                 return response.getBody();
             }
 
-            throw new IllegalArgumentException("No se pudo obtener información del usuario");
+            throw new IllegalArgumentException(
+                    "No se pudo obtener información del usuario del condominio");
 
         } catch (HttpClientErrorException.Unauthorized e) {
-            throw new IllegalArgumentException("Sesión expirada en el sistema del condominio");
+            throw new IllegalArgumentException(
+                    "Sesión expirada en el sistema del condominio");
         } catch (HttpClientErrorException e) {
-            log.error("Error en /me externo: {}", e.getMessage());
-            throw new IllegalArgumentException("Error al obtener datos del usuario externo");
+            log.error("[{}] Error en /me externo: {}",
+                    condominio.getNombre(), e.getMessage());
+            throw new IllegalArgumentException(
+                    "Error al obtener datos del usuario externo");
         }
     }
 }

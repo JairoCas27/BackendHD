@@ -36,6 +36,12 @@ public class Condominio {
     @Column(name = "titular_telefono")
     private String titularTelefono;
 
+    @Column(name = "sync_email")
+    private String syncEmail;
+
+    @Column(name = "sync_password")
+    private String syncPassword;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoCondominio estado;
