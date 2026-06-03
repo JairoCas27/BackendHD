@@ -59,6 +59,9 @@ public class ContactoMensaje {
     @Column(name = "usuario_respuesta_email")
 private String usuarioRespuestaEmail;
 
+
+
+
     @PrePersist
     protected void onCreate() {
         this.fechaEnvio = LocalDateTime.now();
