@@ -112,4 +112,8 @@ public class TitularService {
                 .fechaAsignacionPlan(t.getFechaAsignacionPlan())
                 .build();
     }
+
+    public Titular guardar(Titular titular) {
+        return titularRepository.save(titular);
+    }
 }

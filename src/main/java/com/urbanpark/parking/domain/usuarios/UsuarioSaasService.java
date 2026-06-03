@@ -142,4 +142,8 @@ public class UsuarioSaasService {
                 .fechaRegistro(u.getFechaRegistro())
                 .build();
     }
+
+    public UsuarioSaas guardar(UsuarioSaas usuario) {
+        return usuarioSaasRepository.save(usuario);
+    }
 }
