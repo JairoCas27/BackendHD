@@ -1,7 +1,5 @@
 package com.urbanpark.parking.security;
 
-import com.urbanpark.parking.security.jwt.JwtAuthFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
@@ -17,6 +15,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.urbanpark.parking.security.jwt.JwtAuthFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -37,7 +39,8 @@ public class SecurityConfig {
                                 "/api/v1/planes",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
-                                "/api-docs/**"
+                                "/api-docs/**",
+                                "/api/v1/contacto"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
