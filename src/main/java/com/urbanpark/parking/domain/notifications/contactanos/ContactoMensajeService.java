@@ -1,6 +1,7 @@
 package com.urbanpark.parking.domain.notifications.contactanos;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -10,6 +11,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoPublicResponse;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoRequest;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoResponse;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.RespuestaRequest;
@@ -24,14 +26,11 @@ public class ContactoMensajeService {
 
     private final ContactoMensajeRepository repository;
     private final UsuarioSaasRepository usuarioRepository;
-    
-    // ✨ MEJORA: Inyectamos el componente nativo de Spring que pidió tu compañero
     private final JavaMailSender mailSender;
 
     @Value("${app.contact.destination-email}")
     private String correoDestinoCorporativo;
 
-    // ✨ MEJORA: Jalamos el nombre del remitente e email de autenticación desde el properties
     @Value("${spring.mail.username}")
     private String mailUsername;
 
@@ -39,7 +38,7 @@ public class ContactoMensajeService {
     private String nombreRemitente;
 
     @Transactional
-    public ContactoResponse registrarMensaje(ContactoRequest request) {
+    public ContactoPublicResponse registrarMensaje(ContactoRequest request) {
         ContactoMensaje mensaje = ContactoMensaje.builder()
                 .nombre(request.getNombre())
                 .correo(request.getCorreo())
@@ -50,13 +49,13 @@ public class ContactoMensajeService {
 
         enviarEmail(
             correoDestinoCorporativo,
-            "Nuevo Formulario de Contacto - Código: " + guardado.getCodigoSeguimiento(),
+            "Nuevo Formulario de Contacto - Codigo: " + guardado.getCodigoSeguimiento(),
             "Nombre del remitente: " + guardado.getNombre() + "\n" +
             "Correo del remitente: " + guardado.getCorreo() + "\n\n" +
             "Mensaje:\n" + guardado.getMensaje()
         );
 
-        return mapearAResponse(guardado);
+        return mapearAResponsePublico(guardado);
     }
 
     @Transactional(readOnly = true)
@@ -69,7 +68,7 @@ public class ContactoMensajeService {
     @Transactional(readOnly = true)
     public ContactoResponse buscarPorCodigoSeguimiento(String codigoSeguimiento) {
         ContactoMensaje mensaje = repository.findByCodigoSeguimiento(codigoSeguimiento)
-                .orElseThrow(() -> new RuntimeException("No se encontró ningún mensaje de contacto con el código: " + codigoSeguimiento));
+                .orElseThrow(() -> new RuntimeException("No se encontro ningun mensaje de contacto con el codigo: " + codigoSeguimiento));
         return mapearAResponse(mensaje);
     }
 
@@ -79,7 +78,7 @@ public class ContactoMensajeService {
                 .orElseThrow(() -> new RuntimeException("Mensaje de contacto no encontrado con ID: " + id));
 
         var admin = usuarioRepository.findByEmail(adminEmail)
-                .orElseThrow(() -> new RuntimeException("No se encontró el usuario administrador con el email: " + adminEmail));
+                .orElseThrow(() -> new RuntimeException("No se encontro el usuario administrador con el email: " + adminEmail));
 
         mensaje.setRespuesta(request.getRespuesta());
         mensaje.setFechaRespuesta(LocalDateTime.now());
@@ -88,11 +87,15 @@ public class ContactoMensajeService {
 
         ContactoMensaje actualizado = repository.save(mensaje);
 
+        // Formateo de fecha legible en formato 24H
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String fechaFormateada = actualizado.getFechaEnvio().format(formatter);
+
         enviarEmail(
             actualizado.getCorreo(),
-            "Respuesta a su consulta UrbanPark - Código: " + actualizado.getCodigoSeguimiento(),
+            "UrbanPark - Respuesta a su consulta [" + actualizado.getCodigoSeguimiento() + "]",
             "Estimado(a) " + actualizado.getNombre() + ",\n\n" +
-            "Hemos revisado su mensaje enviado el " + actualizado.getFechaEnvio() + ".\n\n" +
+            "Hemos revisado su mensaje enviado el " + fechaFormateada + ".\n\n" +
             "Respuesta de nuestro equipo:\n" + actualizado.getRespuesta() + "\n\n" +
             "Atentamente,\n" + nombreRemitente + "."
         );
@@ -100,13 +103,11 @@ public class ContactoMensajeService {
         return mapearAResponse(actualizado);
     }
 
-    // ✨ MEJORA: El método ahora es ultra compacto gracias a JavaMailSender
     private void enviarEmail(String para, String asunto, String contenido) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            // Configura el remitente combinando el nombre estético con el correo real de salida
             helper.setFrom(String.format("%s <%s>", nombreRemitente, mailUsername));
             helper.setTo(para);
             helper.setSubject(asunto);
@@ -114,7 +115,7 @@ public class ContactoMensajeService {
 
             mailSender.send(message);
         } catch (Exception e) {
-            System.err.println("Error al enviar el correo electrónico mediante JavaMailSender: " + e.getMessage());
+            System.err.println("Error al enviar el correo electronico mediante JavaMailSender: " + e.getMessage());
         }
     }
 
@@ -130,6 +131,16 @@ public class ContactoMensajeService {
                 .respuesta(entidad.getRespuesta())
                 .fechaRespuesta(entidad.getFechaRespuesta())
                 .usuarioRespuestaId(entidad.getUsuarioRespuestaId())
+                .build();
+    }
+
+    private ContactoPublicResponse mapearAResponsePublico(ContactoMensaje entidad) {
+        return ContactoPublicResponse.builder()
+                .codigoSeguimiento(entidad.getCodigoSeguimiento())
+                .correo(entidad.getCorreo())
+                .fechaEnvio(entidad.getFechaEnvio())
+                .mensaje(entidad.getMensaje())
+                .nombre(entidad.getNombre())
                 .build();
     }
 
