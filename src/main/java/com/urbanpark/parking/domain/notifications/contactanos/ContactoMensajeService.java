@@ -2,10 +2,11 @@ package com.urbanpark.parking.domain.notifications.contactanos;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,13 +15,6 @@ import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoRespon
 import com.urbanpark.parking.domain.notifications.contactanos.dto.RespuestaRequest;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaasRepository;
 
-import jakarta.mail.Authenticator;
-import jakarta.mail.Message;
-import jakarta.mail.MessagingException;
-import jakarta.mail.PasswordAuthentication;
-import jakarta.mail.Session;
-import jakarta.mail.Transport;
-import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 
@@ -29,22 +23,20 @@ import lombok.RequiredArgsConstructor;
 public class ContactoMensajeService {
 
     private final ContactoMensajeRepository repository;
-    private final UsuarioSaasRepository usuarioRepository; // Mantenemos tu declaración aquí arriba para orden de Lombok
+    private final UsuarioSaasRepository usuarioRepository;
+    
+    // ✨ MEJORA: Inyectamos el componente nativo de Spring que pidió tu compañero
+    private final JavaMailSender mailSender;
 
     @Value("${app.contact.destination-email}")
     private String correoDestinoCorporativo;
 
-    @Value("${spring.mail.host:smtp.gmail.com}")
-    private String mailHost;
-
-    @Value("${spring.mail.port:587}")
-    private String mailPort;
-
-    @Value("${spring.mail.username:}")
+    // ✨ MEJORA: Jalamos el nombre del remitente e email de autenticación desde el properties
+    @Value("${spring.mail.username}")
     private String mailUsername;
 
-    @Value("${spring.mail.password:}")
-    private String mailPassword;
+    @Value("${app.mail.nombre-remitente:UrbanPark SaaS}")
+    private String nombreRemitente;
 
     @Transactional
     public ContactoResponse registrarMensaje(ContactoRequest request) {
@@ -74,7 +66,6 @@ public class ContactoMensajeService {
                 .collect(Collectors.toList());
     }
 
-    // ✨ MEJORA 1: Buscar directamente por el código único String
     @Transactional(readOnly = true)
     public ContactoResponse buscarPorCodigoSeguimiento(String codigoSeguimiento) {
         ContactoMensaje mensaje = repository.findByCodigoSeguimiento(codigoSeguimiento)
@@ -82,20 +73,18 @@ public class ContactoMensajeService {
         return mapearAResponse(mensaje);
     }
 
-    // ✨ MEJORA 2: Modificado para buscar al Admin por Email y persistir estrictamente su ID
     @Transactional
     public ContactoResponse responderMensaje(Long id, RespuestaRequest request, String adminEmail) {
         ContactoMensaje mensaje = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mensaje de contacto no encontrado con ID: " + id));
 
-        // Buscamos al usuario administrador por su email para obtener su ID único
         var admin = usuarioRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new RuntimeException("No se encontró el usuario administrador con el email: " + adminEmail));
 
         mensaje.setRespuesta(request.getRespuesta());
         mensaje.setFechaRespuesta(LocalDateTime.now());
         mensaje.setRespondido(true);
-        mensaje.setUsuarioRespuestaId(admin.getId()); // 🌟 Guardamos el ID del admin que respondió (Pedido de Diego)
+        mensaje.setUsuarioRespuestaId(admin.getId());
 
         ContactoMensaje actualizado = repository.save(mensaje);
 
@@ -105,37 +94,27 @@ public class ContactoMensajeService {
             "Estimado(a) " + actualizado.getNombre() + ",\n\n" +
             "Hemos revisado su mensaje enviado el " + actualizado.getFechaEnvio() + ".\n\n" +
             "Respuesta de nuestro equipo:\n" + actualizado.getRespuesta() + "\n\n" +
-            "Atentamente,\nSoporte UrbanPark."
+            "Atentamente,\n" + nombreRemitente + "."
         );
 
         return mapearAResponse(actualizado);
     }
 
+    // ✨ MEJORA: El método ahora es ultra compacto gracias a JavaMailSender
     private void enviarEmail(String para, String asunto, String contenido) {
-        Properties props = new Properties();
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", mailHost);
-        props.put("mail.smtp.port", mailPort);
-        props.put("mail.smtp.ssl.trust", mailHost);
-
-        Session session = Session.getInstance(props, new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(mailUsername, mailPassword);
-            }
-        });
-
         try {
-            Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(mailUsername.isEmpty() ? "no-reply@urbanpark.com" : mailUsername));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(para));
-            message.setSubject(asunto);
-            message.setText(contenido);
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            Transport.send(message);
-        } catch (MessagingException e) {
-            System.err.println("Error al enviar el correo electrónico por SMTP: " + e.getMessage());
+            // Configura el remitente combinando el nombre estético con el correo real de salida
+            helper.setFrom(String.format("%s <%s>", nombreRemitente, mailUsername));
+            helper.setTo(para);
+            helper.setSubject(asunto);
+            helper.setText(contenido);
+
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Error al enviar el correo electrónico mediante JavaMailSender: " + e.getMessage());
         }
     }
 
@@ -150,11 +129,10 @@ public class ContactoMensajeService {
                 .respondido(entidad.isRespondido())
                 .respuesta(entidad.getRespuesta())
                 .fechaRespuesta(entidad.getFechaRespuesta())
-                .usuarioRespuestaId(entidad.getUsuarioRespuestaId()) // 🌟 Mapeamos el ID al DTO final
+                .usuarioRespuestaId(entidad.getUsuarioRespuestaId())
                 .build();
     }
 
-    // 🟢 Listar consultas atendidas
     @Transactional(readOnly = true)
     public List<ContactoResponse> listarRespondidos() {
         return repository.findByRespondidoTrue().stream()
@@ -162,7 +140,6 @@ public class ContactoMensajeService {
                 .collect(Collectors.toList());
     }
 
-    // 🔴 Listar consultas pendientes
     @Transactional(readOnly = true)
     public List<ContactoResponse> listarPendientes() {
         return repository.findByRespondidoFalse().stream()
