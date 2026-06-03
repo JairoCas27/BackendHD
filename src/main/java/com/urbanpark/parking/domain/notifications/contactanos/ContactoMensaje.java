@@ -53,6 +53,12 @@ public class ContactoMensaje {
     @Column(nullable = false)
     private boolean respondido;
 
+    @Column(name = "usuario_respuesta_id")
+    private Long usuarioRespuestaId; // Guarda el ID del ADMIN/SUPERADMIN que respondió
+
+    @Column(name = "usuario_respuesta_email")
+private String usuarioRespuestaEmail;
+
     @PrePersist
     protected void onCreate() {
         this.fechaEnvio = LocalDateTime.now();
