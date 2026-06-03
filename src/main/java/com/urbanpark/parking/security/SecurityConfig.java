@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity(securedEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -48,12 +48,10 @@ public class SecurityConfig {
 
     @Bean
     public RoleHierarchy roleHierarchy() {
-        RoleHierarchyImpl hierarchy = new RoleHierarchyImpl();
-        hierarchy.setHierarchy("""
-                ROLE_SUPERADMIN > ROLE_ADMIN
-                ROLE_ADMIN > ROLE_CLIENTE
-                """);
-        return hierarchy;
+        return RoleHierarchyImpl.withDefaultRolePrefix()
+                .role("SUPERADMIN").implies("ADMIN")
+                .role("ADMIN").implies("CLIENTE")
+                .build();
     }
 
     @Bean
