@@ -21,14 +21,14 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (usuarioSaasRepository.existsByEmail("super@urbanpark.com")) {
+        if (usuarioSaasRepository.existsByEmail("superadmin@urbanpark.com")) {
             log.info("SUPERADMIN base ya existe, omitiendo inicialización");
             return;
         }
 
         UsuarioSaas superAdmin = UsuarioSaas.builder()
                 .email("superadmin@urbanpark.com")
-                .passwordHash(passwordEncoder.encode("SuperAdmin"))
+                .passwordHash(passwordEncoder.encode("superadmin"))
                 .nombres("Carlos")
                 .apellidos("Mendoza")
                 .dni("00000001")
