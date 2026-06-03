@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoPublicResponse;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoRequest;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoResponse;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.RespuestaRequest;
@@ -33,12 +34,13 @@ public class ContactoController {
 
     private final ContactoMensajeService service;
 
+  // Cambia únicamente el método enviarMensaje dentro de tu ContactoController por este:
     @PostMapping
     @Operation(summary = "Registrar un nuevo mensaje de contacto (Público)", 
                description = "Cualquier usuario anónimo puede rellenar nombre, correo y mensaje desde la Landing Page. Genera un código único de seguimiento y envía una alerta por correo.")
-    public ResponseEntity<ApiResponse<ContactoResponse>> enviarMensaje(
+    public ResponseEntity<ApiResponse<ContactoPublicResponse>> enviarMensaje(
             @RequestBody @Valid ContactoRequest request) {
-        ContactoResponse response = service.registrarMensaje(request);
+        ContactoPublicResponse response = service.registrarMensaje(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Mensaje enviado y registrado con éxito", response));
     }
