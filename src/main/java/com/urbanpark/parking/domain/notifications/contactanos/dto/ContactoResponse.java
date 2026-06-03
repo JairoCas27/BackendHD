@@ -17,4 +17,5 @@ public class ContactoResponse {
     private boolean respondido;
     private String respuesta;
     private LocalDateTime fechaRespuesta;
+    private Long usuarioRespuestaId;
 }
