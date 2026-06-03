@@ -32,7 +32,6 @@ public class ContactoMensajeService {
     @Value("${app.contact.destination-email}")
     private String correoDestinoCorporativo;
 
-    // Inyectamos las propiedades de Spring para el entorno de correo
     @Value("${spring.mail.host:smtp.gmail.com}")
     private String mailHost;
 
@@ -47,7 +46,6 @@ public class ContactoMensajeService {
 
     @Transactional
     public ContactoResponse registrarMensaje(ContactoRequest request) {
-        // 1. Guardar el mensaje en la base de datos de Neon
         ContactoMensaje mensaje = ContactoMensaje.builder()
                 .nombre(request.getNombre())
                 .correo(request.getCorreo())
@@ -56,7 +54,6 @@ public class ContactoMensajeService {
 
         ContactoMensaje guardado = repository.save(mensaje);
 
-        // 2. Enviar el correo de alerta al buzón corporativo de la empresa
         enviarEmail(
             correoDestinoCorporativo,
             "Nuevo Formulario de Contacto - Código: " + guardado.getCodigoSeguimiento(),
@@ -75,18 +72,27 @@ public class ContactoMensajeService {
                 .collect(Collectors.toList());
     }
 
+    // ✨ MEJORA 1: Buscar directamente por el código único String
+    @Transactional(readOnly = true)
+    public ContactoResponse buscarPorCodigoSeguimiento(String codigoSeguimiento) {
+        ContactoMensaje mensaje = repository.findByCodigoSeguimiento(codigoSeguimiento)
+                .orElseThrow(() -> new RuntimeException("No se encontró ningún mensaje de contacto con el código: " + codigoSeguimiento));
+        return mapearAResponse(mensaje);
+    }
+
+    // ✨ MEJORA 2: Se agregó el parámetro 'adminEmail' para asociar quién resolvió la consulta
     @Transactional
-    public ContactoResponse responderMensaje(Long id, RespuestaRequest request) {
+    public ContactoResponse responderMensaje(Long id, RespuestaRequest request, String adminEmail) {
         ContactoMensaje mensaje = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mensaje de contacto no encontrado con ID: " + id));
 
         mensaje.setRespuesta(request.getRespuesta());
         mensaje.setFechaRespuesta(LocalDateTime.now());
         mensaje.setRespondido(true);
+        mensaje.setUsuarioRespuestaEmail(adminEmail); // Asignación de auditoría solicitada por Diego
 
         ContactoMensaje actualizado = repository.save(mensaje);
 
-        // Enviar la respuesta vía correo electrónico al remitente original
         enviarEmail(
             actualizado.getCorreo(),
             "Respuesta a su consulta UrbanPark - Código: " + actualizado.getCodigoSeguimiento(),
@@ -100,7 +106,6 @@ public class ContactoMensajeService {
     }
 
     private void enviarEmail(String para, String asunto, String contenido) {
-        // Configuración de propiedades SMTP utilizando la infraestructura de Jakarta
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
@@ -108,7 +113,6 @@ public class ContactoMensajeService {
         props.put("mail.smtp.port", mailPort);
         props.put("mail.smtp.ssl.trust", mailHost);
 
-        // Crear la sesión con autenticación básica
         Session session = Session.getInstance(props, new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
@@ -125,7 +129,6 @@ public class ContactoMensajeService {
 
             Transport.send(message);
         } catch (MessagingException e) {
-            // Se captura la excepción pero no detiene el flujo de la base de datos si falla el SMTP local
             System.err.println("Error al enviar el correo electrónico por SMTP: " + e.getMessage());
         }
     }
