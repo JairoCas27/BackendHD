@@ -52,7 +52,6 @@ public class ContactoController {
         return ResponseEntity.ok(ApiResponse.success("Listado de mensajes recuperado con éxito", mensajes));
     }
 
-    // ✨ MEJORA 1: Nuevo endpoint público para rastreo de estados desde la Landing Page sin Token
     @GetMapping("/seguimiento/{codigo}")
     @Operation(summary = "Obtener un mensaje de contacto por su código de seguimiento (Público)", 
                description = "Permite a los clientes finales buscar una consulta directamente ingresando su código único (Ej: CON-A318BC16).")
@@ -61,20 +60,47 @@ public class ContactoController {
         return ResponseEntity.ok(ApiResponse.success("Consulta recuperada con éxito", response));
     }
 
-    // ✨ MEJORA 2: Endpoint de respuesta enriquecido con auditoría automática mediante Spring Security
     @PatchMapping("/{id}/responder")
     @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'SUPERADMIN')")
     @Operation(summary = "Responder a un mensaje de contacto específico", 
-               description = "Registra la respuesta en el sistema inyectando automáticamente la cuenta del Administrador logueado y enviando la resolución por email.")
+               description = "Registra la respuesta en el sistema inyectando automáticamente el ID del Administrador logueado y enviando la resolución por email.")
     public ResponseEntity<ApiResponse<ContactoResponse>> responderMensaje(
             @PathVariable Long id,
             @RequestBody @Valid RespuestaRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         
-        // Extraemos el email/username del administrador autenticado que ejecuta la operación
+        // Extraemos el identificador (email) del contexto de Spring Security
         String adminEmail = userDetails.getUsername();
         
         ContactoResponse response = service.responderMensaje(id, request, adminEmail);
         return ResponseEntity.ok(ApiResponse.success("Respuesta enviada correctamente al remitente", response));
+    }
+
+    @GetMapping("/respondidos")
+    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'SUPERADMIN')")
+    @Operation(summary = "Listar mensajes de contacto ya respondidos (Privado)", 
+               description = "Permite a los administradores auditar el historial de consultas resueltas.")
+    public ResponseEntity<ApiResponse<List<ContactoResponse>>> obtenerRespondidos() {
+        List<ContactoResponse> mensajes = service.listarRespondidos();
+        
+        String mensajeInformativo = mensajes.isEmpty() 
+                ? "No se han registrado mensajes respondidos en el sistema todavía." 
+                : "Listado de mensajes respondidos recuperado con éxito";
+                
+        return ResponseEntity.ok(ApiResponse.success(mensajeInformativo, mensajes));
+    }
+
+    @GetMapping("/pendientes")
+    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'SUPERADMIN')")
+    @Operation(summary = "Listar mensajes de contacto pendientes de respuesta (Privado)", 
+               description = "Muestra únicamente las consultas que requieren atención inmediata. Si está vacío, confirma que todo está resuelto.")
+    public ResponseEntity<ApiResponse<List<ContactoResponse>>> obtenerPendientes() {
+        List<ContactoResponse> mensajes = service.listarPendientes();
+        
+        String mensajeInformativo = mensajes.isEmpty() 
+                ? "Todos los mensajes han sido respondidos con éxito." 
+                : "Listado de mensajes pendientes recuperado con éxito";
+                
+        return ResponseEntity.ok(ApiResponse.success(mensajeInformativo, mensajes));
     }
 }
