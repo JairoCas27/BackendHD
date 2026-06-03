@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoRequest;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoResponse;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.RespuestaRequest;
+import com.urbanpark.parking.domain.usuarios.UsuarioSaasRepository;
 
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
@@ -28,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class ContactoMensajeService {
 
     private final ContactoMensajeRepository repository;
+    private final UsuarioSaasRepository usuarioRepository; // Mantenemos tu declaración aquí arriba para orden de Lombok
 
     @Value("${app.contact.destination-email}")
     private String correoDestinoCorporativo;
@@ -80,16 +82,20 @@ public class ContactoMensajeService {
         return mapearAResponse(mensaje);
     }
 
-    // ✨ MEJORA 2: Se agregó el parámetro 'adminEmail' para asociar quién resolvió la consulta
+    // ✨ MEJORA 2: Modificado para buscar al Admin por Email y persistir estrictamente su ID
     @Transactional
     public ContactoResponse responderMensaje(Long id, RespuestaRequest request, String adminEmail) {
         ContactoMensaje mensaje = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mensaje de contacto no encontrado con ID: " + id));
 
+        // Buscamos al usuario administrador por su email para obtener su ID único
+        var admin = usuarioRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new RuntimeException("No se encontró el usuario administrador con el email: " + adminEmail));
+
         mensaje.setRespuesta(request.getRespuesta());
         mensaje.setFechaRespuesta(LocalDateTime.now());
         mensaje.setRespondido(true);
-        mensaje.setUsuarioRespuestaEmail(adminEmail); // Asignación de auditoría solicitada por Diego
+        mensaje.setUsuarioRespuestaId(admin.getId()); // 🌟 Guardamos el ID del admin que respondió (Pedido de Diego)
 
         ContactoMensaje actualizado = repository.save(mensaje);
 
@@ -144,6 +150,23 @@ public class ContactoMensajeService {
                 .respondido(entidad.isRespondido())
                 .respuesta(entidad.getRespuesta())
                 .fechaRespuesta(entidad.getFechaRespuesta())
+                .usuarioRespuestaId(entidad.getUsuarioRespuestaId()) // 🌟 Mapeamos el ID al DTO final
                 .build();
+    }
+
+    // 🟢 Listar consultas atendidas
+    @Transactional(readOnly = true)
+    public List<ContactoResponse> listarRespondidos() {
+        return repository.findByRespondidoTrue().stream()
+                .map(this::mapearAResponse)
+                .collect(Collectors.toList());
+    }
+
+    // 🔴 Listar consultas pendientes
+    @Transactional(readOnly = true)
+    public List<ContactoResponse> listarPendientes() {
+        return repository.findByRespondidoFalse().stream()
+                .map(this::mapearAResponse)
+                .collect(Collectors.toList());
     }
 }
