@@ -22,13 +22,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class AuditLogAspect {
 
     private final AuditLogService auditLogService;
+    private static final ThreadLocal<Boolean> EN_AUDITORIA = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     @Around("@annotation(auditable)")
     public Object interceptar(ProceedingJoinPoint pjp, AuditableAction auditable) throws Throwable {
-
-        // 🛡️ CONTROL ANTIBUCLE INTERNO
-        String nombreMetodoActual = pjp.getSignature().getName();
-        if ("registrar".equals(nombreMetodoActual) || "filtrar".equals(nombreMetodoActual) || "listarTodos".equals(nombreMetodoActual)) {
+        if (EN_AUDITORIA.get()) {
             return pjp.proceed();
         }
 
@@ -45,73 +43,81 @@ public class AuditLogAspect {
                 endpoint = req.getRequestURI();
                 metodo   = req.getMethod();
                 ip       = resolverIp(req);
+                
+                if (endpoint.startsWith("/api/v1/audit")) {
+                    return pjp.proceed();
+                }
+            } else {
+                log.debug("Sin contexto HTTP activo en la interceptación de auditoría.");
             }
-        } catch (Exception ignored) {}
-
-        // 🛡️ Evitar procesar rutas de auditoría por URL secundaria
-        if (endpoint != null && endpoint.contains("/api/v1/audit")) {
-            return pjp.proceed();
+        } catch (Exception e) {
+            log.warn("Error al extraer contexto HTTP: {}", e.getMessage());
         }
 
-        // ── Usuario autenticado de forma plana y segura ─────────────────────
+        // ── Usuario autenticado ────────────────────────────────────────────
         Long   usuarioId = null;
         String email     = "anónimo";
         String rol       = "N/A";
 
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated()) {
-                email = auth.getName(); // 👈 Extrae el string plano directo del token sin tocar Hibernate
+            if (auth != null && auth.isAuthenticated() && !(auth.getPrincipal() instanceof String)) {
+                email = auth.getName();
                 
-                // Solo si el principal es la entidad y no un proxy rebelde extraemos de forma segura
                 Object principal = auth.getPrincipal();
                 if (principal instanceof UsuarioSaas u) {
                     usuarioId = u.getId();
-                    // Usamos un bloque defensivo para el Enum por si fuera un proxy perezoso
                     try {
                         rol = u.getRol() != null ? u.getRol().name() : "N/A";
                     } catch (Exception e) {
                         rol = "AUTENTICADO";
+                        log.trace("Error al obtener rol del usuario: {}", e.getMessage());
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Error al extraer contexto de seguridad: {}", e.getMessage());
+        }
 
         // ── Ejecución y registro ───────────────────────────────────────────
         String desc = auditable.descripcion().isBlank()
-                ? nombreMetodoActual
+                ? pjp.getSignature().getName()
                 : auditable.descripcion();
 
-        final Long finalUsuarioId = usuarioId;
-        final String finalEmail = email;
-        final String finalRol = rol;
-        final String finalEndpoint = endpoint;
-        final String finalMetodo = metodo;
-        final String finalIp = ip;
-
         try {
+            EN_AUDITORIA.set(Boolean.TRUE);
             Object resultado = pjp.proceed();
             auditLogService.registrar(
-                    finalUsuarioId, finalEmail, finalRol,
+                    usuarioId, email, rol,
                     auditable.accion(), desc, auditable.entidad(),
-                    finalEndpoint, finalMetodo, finalIp,
+                    endpoint, metodo, ip,
                     true, null
             );
             return resultado;
         } catch (Throwable ex) {
             auditLogService.registrar(
-                    finalUsuarioId, finalEmail, finalRol,
+                    usuarioId, email, rol,
                     auditable.accion(), desc, auditable.entidad(),
-                    finalEndpoint, finalMetodo, finalIp,
+                    endpoint, metodo, ip,
                     false, ex.getMessage()
             );
             throw ex;
+        } finally {
+            EN_AUDITORIA.set(Boolean.FALSE);
         }
     }
 
     private String resolverIp(HttpServletRequest req) {
         String ip = req.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = req.getRemoteAddr();
-        return ip.contains(",") ? ip.split(",")[0].trim() : ip;
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = req.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
+            ip = "127.0.0.1";
+        }
+        return ip != null ? ip : "desconocida";
     }
 }
