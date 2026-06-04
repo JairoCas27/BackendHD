@@ -29,7 +29,7 @@ public class CondominioService {
     private final TitularService titularService;
     private final UsuarioSaasService usuarioSaasService;
 
-    // ─── Cliente registra un condominio ───────────────────────
+    // Cliente registra un condominio
     @Transactional
     public CondominioResponse registrar(CondominioRequest request) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
@@ -73,7 +73,8 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
-    // ─── Cliente lista sus condominios ────────────────────────
+    // Cliente lista sus condominios
+    @Transactional(readOnly = true)
     public List<CondominioResponse> listarMisCondominios() {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = titularService.findByUsuarioId(usuario.getId());
@@ -84,7 +85,8 @@ public class CondominioService {
                 .toList();
     }
 
-    // ─── Admin lista condominios pendientes ───────────────────
+    // Admin lista condominios pendientes
+    @Transactional(readOnly = true)
     public List<CondominioResponse> listarPendientes() {
         return condominioRepository
                 .findAllByEstado(EstadoCondominio.PENDIENTE_VERIFICACION)
@@ -93,7 +95,8 @@ public class CondominioService {
                 .toList();
     }
 
-    // ─── Admin lista todos los condominios ────────────────────
+    // Admin lista todos los condominios
+    @Transactional(readOnly = true)
     public List<CondominioResponse> listarTodos() {
         return condominioRepository.findAll()
                 .stream()
@@ -101,7 +104,7 @@ public class CondominioService {
                 .toList();
     }
 
-    // ─── Admin aprueba condominio ─────────────────────────────
+    // Admin aprueba condominio
     @Transactional
     public CondominioResponse aprobar(Long id) {
         UsuarioSaas admin = usuarioSaasService.getUsuarioActual();
@@ -118,7 +121,7 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
-    // ─── Admin rechaza condominio ─────────────────────────────
+    // Admin rechaza condominio
     @Transactional
     public CondominioResponse rechazar(Long id, VerificacionRequest request) {
         UsuarioSaas admin = usuarioSaasService.getUsuarioActual();
@@ -139,8 +142,9 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────
-    private Condominio findById(Long id) {
+    // Helpers
+    @Transactional(readOnly = true)
+    protected Condominio findById(Long id) {
         return condominioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Condominio no encontrado con id: " + id));

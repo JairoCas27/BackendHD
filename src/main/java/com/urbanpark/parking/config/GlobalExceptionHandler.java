@@ -2,6 +2,7 @@ package com.urbanpark.parking.config;
 
 import com.urbanpark.parking.shared.dto.ApiResponse;
 import com.urbanpark.parking.shared.exceptions.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -73,8 +75,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
+        // Loguea la excepción completa en consola
+        log.error("Error no controlado en la API", ex);
+
+        // En producción puedes dejar solo el mensaje genérico,
+        // en desarrollo, si quieres ver el detalle en el JSON:
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Error interno del servidor"));
+        // o temporalmente:
+        // .body(ApiResponse.error(ex.getMessage()));
     }
 }
