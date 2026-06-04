@@ -47,7 +47,6 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/planes",
-                                "/api/v1/contacto",
                                 "/api/v1/contacto/seguimiento/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -83,10 +82,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/me/condominios/*/reglas/**").hasRole("CLIENTE")
 
                         // Contacto admin (ADMIN_CONDOMINIO / SUPERADMIN)
-                        .requestMatchers(HttpMethod.GET,   "/api/v1/contacto").hasAnyRole("ADMIN_CONDOMINIO", "SUPERADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/contacto/*/responder").hasAnyRole("ADMIN_CONDOMINIO", "SUPERADMIN")
-                        .requestMatchers(HttpMethod.GET,   "/api/v1/contacto/respondidos").hasAnyRole("ADMIN_CONDOMINIO", "SUPERADMIN")
-                        .requestMatchers(HttpMethod.GET,   "/api/v1/contacto/pendientes").hasAnyRole("ADMIN_CONDOMINIO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/contacto").permitAll()
+                        .requestMatchers(HttpMethod.GET,   "/api/v1/contacto").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/contacto/*/responder").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.GET,   "/api/v1/contacto/respondidos").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.GET,   "/api/v1/contacto/pendientes").hasAnyRole("ADMIN", "SUPERADMIN")
 
                         // Solicitudes de plan
                         // Cliente
