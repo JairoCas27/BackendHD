@@ -1,18 +1,20 @@
 package com.urbanpark.parking.domain.auth;
 
+import com.urbanpark.parking.domain.audit.AuditLogService;
 import com.urbanpark.parking.domain.auth.dto.*;
 import com.urbanpark.parking.domain.auth.validators.RegisterValidator;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaas;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaasRepository;
 import com.urbanpark.parking.security.jwt.JwtService;
 import com.urbanpark.parking.security.otp.OtpService;
-import com.urbanpark.parking.shared.enums.EstadoUsuarioSaas;
-import com.urbanpark.parking.shared.enums.OrigenRegistro;
-import com.urbanpark.parking.shared.enums.RolSaas;
+import com.urbanpark.parking.shared.audit.AuditableAction;
+import com.urbanpark.parking.shared.enums.*;
 import com.urbanpark.parking.shared.exceptions.AccesoDenegadoException;
 import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,14 +24,22 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UsuarioSaasRepository usuarioSaasRepository;
-    private final RegisterValidator registerValidator;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-    private final OtpService otpService;
-    private final AuthenticationManager authenticationManager;
+    private final UsuarioSaasRepository  usuarioSaasRepository;
+    private final RegisterValidator      registerValidator;
+    private final PasswordEncoder        passwordEncoder;
+    private final JwtService             jwtService;
+    private final OtpService             otpService;
+    private final AuthenticationManager  authenticationManager;
+    private final AuditLogService        auditLogService;      // ← nuevo
+    private final HttpServletRequest     httpRequest;          // ← nuevo (Spring lo inyecta automáticamente via proxy)
 
+    // ── Register ────────────────────────────────────────────────────────────
     @Transactional
+    @AuditableAction(
+            accion      = TipoAccionAudit.USUARIO_CREADO,
+            descripcion = "Registro de nuevo cliente",
+            entidad     = "UsuarioSaas"
+    )
     public void register(RegisterRequest request) {
         registerValidator.validate(request);
 
@@ -50,11 +60,36 @@ public class AuthService {
         usuarioSaasRepository.save(usuario);
     }
 
+    // ── Login ────────────────────────────────────────────────────────────────
+    // LOGIN_FALLIDO se registra manualmente en el catch.
+    // LOGIN exitoso se registra con AOP via @AuditableAction.
+    @AuditableAction(
+            accion      = TipoAccionAudit.LOGIN,
+            descripcion = "Inicio de sesión exitoso",
+            entidad     = "UsuarioSaas"
+    )
     public LoginResponse login(LoginRequest request) {
-        // Spring Security valida credenciales
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (BadCredentialsException ex) {
+            // Registro manual: no hay usuario autenticado en el contexto aún
+            auditLogService.registrar(
+                    null,
+                    request.getEmail(),
+                    "N/A",
+                    TipoAccionAudit.LOGIN_FALLIDO,
+                    "Credenciales inválidas",
+                    "UsuarioSaas",
+                    httpRequest.getRequestURI(),
+                    httpRequest.getMethod(),
+                    resolverIp(),
+                    false,
+                    ex.getMessage()
+            );
+            throw ex; // re-lanza para que el GlobalExceptionHandler responda 401
+        }
 
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
@@ -76,6 +111,12 @@ public class AuthService {
                 .build();
     }
 
+    // ── Forgot Password ───────────────────────────────────────────────────────
+    @AuditableAction(
+            accion      = TipoAccionAudit.USUARIO_ACTUALIZADO,
+            descripcion = "Solicitud de recuperación de contraseña (OTP enviado)",
+            entidad     = "UsuarioSaas"
+    )
     public void forgotPassword(ForgotPasswordRequest request) {
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("No existe cuenta con ese email"));
@@ -83,15 +124,27 @@ public class AuthService {
         otpService.generarYEnviar(usuario);
     }
 
+    // ── Reset Password ────────────────────────────────────────────────────────
     @Transactional
+    @AuditableAction(
+            accion      = TipoAccionAudit.USUARIO_ACTUALIZADO,
+            descripcion = "Contraseña restablecida exitosamente",
+            entidad     = "UsuarioSaas"
+    )
     public void resetPassword(ResetPasswordRequest request) {
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("No existe cuenta con ese email"));
 
-        // Valida OTP (lanza excepción si es inválido o expirado)
         otpService.validar(usuario, request.getOtp());
 
         usuario.setPasswordHash(passwordEncoder.encode(request.getNuevaPassword()));
         usuarioSaasRepository.save(usuario);
+    }
+
+    // ── Helper IP ─────────────────────────────────────────────────────────────
+    private String resolverIp() {
+        String ip = httpRequest.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank()) ip = httpRequest.getRemoteAddr();
+        return ip.contains(",") ? ip.split(",")[0].trim() : ip;
     }
 }
