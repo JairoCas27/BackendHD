@@ -26,6 +26,12 @@ public class AuditLogAspect {
     @Around("@annotation(auditable)")
     public Object interceptar(ProceedingJoinPoint pjp, AuditableAction auditable) throws Throwable {
 
+        // 🛡️ CONTROL ANTIBUCLE INTERNO
+        String nombreMetodoActual = pjp.getSignature().getName();
+        if ("registrar".equals(nombreMetodoActual) || "filtrar".equals(nombreMetodoActual) || "listarTodos".equals(nombreMetodoActual)) {
+            return pjp.proceed();
+        }
+
         // ── Contexto HTTP ──────────────────────────────────────────────────
         String endpoint = "";
         String metodo   = "";
@@ -42,39 +48,61 @@ public class AuditLogAspect {
             }
         } catch (Exception ignored) {}
 
-        // ── Usuario autenticado ────────────────────────────────────────────
+        // 🛡️ Evitar procesar rutas de auditoría por URL secundaria
+        if (endpoint != null && endpoint.contains("/api/v1/audit")) {
+            return pjp.proceed();
+        }
+
+        // ── Usuario autenticado de forma plana y segura ─────────────────────
         Long   usuarioId = null;
         String email     = "anónimo";
         String rol       = "N/A";
 
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UsuarioSaas u) {
-                usuarioId = u.getId();
-                email     = u.getEmail();
-                rol       = u.getRol().name();
+            if (auth != null && auth.isAuthenticated()) {
+                email = auth.getName(); // 👈 Extrae el string plano directo del token sin tocar Hibernate
+                
+                // Solo si el principal es la entidad y no un proxy rebelde extraemos de forma segura
+                Object principal = auth.getPrincipal();
+                if (principal instanceof UsuarioSaas u) {
+                    usuarioId = u.getId();
+                    // Usamos un bloque defensivo para el Enum por si fuera un proxy perezoso
+                    try {
+                        rol = u.getRol() != null ? u.getRol().name() : "N/A";
+                    } catch (Exception e) {
+                        rol = "AUTENTICADO";
+                    }
+                }
             }
         } catch (Exception ignored) {}
 
         // ── Ejecución y registro ───────────────────────────────────────────
         String desc = auditable.descripcion().isBlank()
-                ? pjp.getSignature().getName()
+                ? nombreMetodoActual
                 : auditable.descripcion();
+
+        final Long finalUsuarioId = usuarioId;
+        final String finalEmail = email;
+        final String finalRol = rol;
+        final String finalEndpoint = endpoint;
+        final String finalMetodo = metodo;
+        final String finalIp = ip;
 
         try {
             Object resultado = pjp.proceed();
             auditLogService.registrar(
-                    usuarioId, email, rol,
+                    finalUsuarioId, finalEmail, finalRol,
                     auditable.accion(), desc, auditable.entidad(),
-                    endpoint, metodo, ip,
+                    finalEndpoint, finalMetodo, finalIp,
                     true, null
             );
             return resultado;
         } catch (Throwable ex) {
             auditLogService.registrar(
-                    usuarioId, email, rol,
+                    finalUsuarioId, finalEmail, finalRol,
                     auditable.accion(), desc, auditable.entidad(),
-                    endpoint, metodo, ip,
+                    finalEndpoint, finalMetodo, finalIp,
                     false, ex.getMessage()
             );
             throw ex;
