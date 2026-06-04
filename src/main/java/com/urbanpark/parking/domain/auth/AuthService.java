@@ -14,6 +14,7 @@ import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +52,6 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest request) {
-        // Spring Security valida credenciales
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -68,18 +68,19 @@ public class AuthService {
         return LoginResponse.builder()
                 .token(jwtService.generateToken(usuario))
                 .refreshToken(jwtService.generateRefreshToken(usuario))
-                .id(usuario.getId())
-                .email(usuario.getEmail())
-                .nombreCompleto(usuario.getNombreCompleto())
-                .rol(usuario.getRol())
-                .estado(usuario.getEstado())
                 .build();
+    }
+
+    public ProfileResponse getProfile() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UsuarioSaas usuario = usuarioSaasRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        return toProfileResponse(usuario);
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("No existe cuenta con ese email"));
-
         otpService.generarYEnviar(usuario);
     }
 
@@ -87,11 +88,24 @@ public class AuthService {
     public void resetPassword(ResetPasswordRequest request) {
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("No existe cuenta con ese email"));
-
-        // Valida OTP (lanza excepción si es inválido o expirado)
         otpService.validar(usuario, request.getOtp());
-
         usuario.setPasswordHash(passwordEncoder.encode(request.getNuevaPassword()));
         usuarioSaasRepository.save(usuario);
+    }
+
+    private ProfileResponse toProfileResponse(UsuarioSaas u) {
+        return ProfileResponse.builder()
+                .id(u.getId())
+                .email(u.getEmail())
+                .nombres(u.getNombres())
+                .apellidos(u.getApellidos())
+                .nombreCompleto(u.getNombreCompleto())
+                .dni(u.getDni())
+                .telefono(u.getTelefono())
+                .rol(u.getRol())
+                .estado(u.getEstado())
+                .origenRegistro(u.getOrigenRegistro())
+                .fechaRegistro(u.getFechaRegistro())
+                .build();
     }
 }
