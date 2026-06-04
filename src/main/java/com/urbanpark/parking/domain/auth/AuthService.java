@@ -24,20 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UsuarioSaasRepository  usuarioSaasRepository;
-    private final RegisterValidator      registerValidator;
-    private final PasswordEncoder        passwordEncoder;
-    private final JwtService             jwtService;
-    private final OtpService             otpService;
-    private final AuthenticationManager  authenticationManager;
-    private final AuditLogService        auditLogService;      // ← nuevo
-    private final HttpServletRequest     httpRequest;          // ← nuevo (Spring lo inyecta automáticamente via proxy)
+    private final UsuarioSaasRepository usuarioSaasRepository;
+    private final RegisterValidator     registerValidator;
+    private final PasswordEncoder       passwordEncoder;
+    private final JwtService            jwtService;
+    private final OtpService            otpService;
+    private final AuthenticationManager authenticationManager;
+    private final AuditLogService       auditLogService;
+    private final HttpServletRequest    httpRequest;
 
-    // ── Register ────────────────────────────────────────────────────────────
     @Transactional
     @AuditableAction(
             accion      = TipoAccionAudit.USUARIO_CREADO,
-            descripcion = "Registro de nuevo cliente",
+            descripcion = "Registro público de nuevo cliente",
             entidad     = "UsuarioSaas"
     )
     public void register(RegisterRequest request) {
@@ -60,9 +59,6 @@ public class AuthService {
         usuarioSaasRepository.save(usuario);
     }
 
-    // ── Login ────────────────────────────────────────────────────────────────
-    // LOGIN_FALLIDO se registra manualmente en el catch.
-    // LOGIN exitoso se registra con AOP via @AuditableAction.
     @AuditableAction(
             accion      = TipoAccionAudit.LOGIN,
             descripcion = "Inicio de sesión exitoso",
@@ -71,10 +67,10 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(), request.getPassword())
             );
         } catch (BadCredentialsException ex) {
-            // Registro manual: no hay usuario autenticado en el contexto aún
             auditLogService.registrar(
                     null,
                     request.getEmail(),
@@ -88,7 +84,7 @@ public class AuthService {
                     false,
                     ex.getMessage()
             );
-            throw ex; // re-lanza para que el GlobalExceptionHandler responda 401
+            throw ex;
         }
 
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
@@ -111,20 +107,18 @@ public class AuthService {
                 .build();
     }
 
-    // ── Forgot Password ───────────────────────────────────────────────────────
     @AuditableAction(
             accion      = TipoAccionAudit.USUARIO_ACTUALIZADO,
-            descripcion = "Solicitud de recuperación de contraseña (OTP enviado)",
+            descripcion = "Solicitud de recuperación de contraseña",
             entidad     = "UsuarioSaas"
     )
     public void forgotPassword(ForgotPasswordRequest request) {
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("No existe cuenta con ese email"));
-
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No existe cuenta con ese email"));
         otpService.generarYEnviar(usuario);
     }
 
-    // ── Reset Password ────────────────────────────────────────────────────────
     @Transactional
     @AuditableAction(
             accion      = TipoAccionAudit.USUARIO_ACTUALIZADO,
@@ -133,15 +127,13 @@ public class AuthService {
     )
     public void resetPassword(ResetPasswordRequest request) {
         UsuarioSaas usuario = usuarioSaasRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("No existe cuenta con ese email"));
-
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No existe cuenta con ese email"));
         otpService.validar(usuario, request.getOtp());
-
         usuario.setPasswordHash(passwordEncoder.encode(request.getNuevaPassword()));
         usuarioSaasRepository.save(usuario);
     }
 
-    // ── Helper IP ─────────────────────────────────────────────────────────────
     private String resolverIp() {
         String ip = httpRequest.getHeader("X-Forwarded-For");
         if (ip == null || ip.isBlank()) ip = httpRequest.getRemoteAddr();
