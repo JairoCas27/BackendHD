@@ -54,6 +54,7 @@ public class ReglaAccesoService {
         return toResponse(regla);
     }
 
+    @Transactional(readOnly = true)
     public List<ReglaResponse> listarPorCondominio(Long condominioId) {
         obtenerCondominioDelCliente(condominioId);
         return reglaAccesoRepository.findAllByCondominioIdOrderByIdDesc(condominioId)
@@ -62,6 +63,7 @@ public class ReglaAccesoService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public ReglaResponse obtener(Long condominioId, Long reglaId) {
         return toResponse(findReglaDelCliente(condominioId, reglaId));
     }
@@ -95,12 +97,14 @@ public class ReglaAccesoService {
         reglaAccesoRepository.delete(regla);
     }
 
+    @Transactional(readOnly = true)
     public ValidacionResult validar(Long condominioId, ValidacionRequest request) {
         obtenerCondominioDelCliente(condominioId);
         return ruleEngine.evaluar(condominioId, request);
     }
 
-    private Condominio obtenerCondominioDelCliente(Long condominioId) {
+    @Transactional(readOnly = true)
+    protected Condominio obtenerCondominioDelCliente(Long condominioId) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = titularService.findByUsuarioId(usuario.getId());
 
@@ -120,7 +124,8 @@ public class ReglaAccesoService {
         return condominio;
     }
 
-    private ReglaAcceso findReglaDelCliente(Long condominioId, Long reglaId) {
+    @Transactional(readOnly = true)
+    protected ReglaAcceso findReglaDelCliente(Long condominioId, Long reglaId) {
         obtenerCondominioDelCliente(condominioId);
         return reglaAccesoRepository.findByIdAndCondominioId(reglaId, condominioId)
                 .orElseThrow(() -> new ResourceNotFoundException(
