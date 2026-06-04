@@ -11,6 +11,7 @@ import com.urbanpark.parking.shared.enums.OrigenRegistro;
 import com.urbanpark.parking.shared.enums.RolSaas;
 import com.urbanpark.parking.shared.exceptions.AccesoDenegadoException;
 import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
+import com.urbanpark.parking.shared.exceptions.ValidacionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -107,5 +108,21 @@ public class AuthService {
                 .origenRegistro(u.getOrigenRegistro())
                 .fechaRegistro(u.getFechaRegistro())
                 .build();
+    }
+
+    @Transactional
+    public void cambiarPassword(ChangePasswordRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UsuarioSaas usuario = usuarioSaasRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        if (!passwordEncoder.matches(request.getPasswordActual(), usuario.getPasswordHash()))
+            throw new ValidacionException("La contraseña actual es incorrecta");
+
+        if (passwordEncoder.matches(request.getPasswordNueva(), usuario.getPasswordHash()))
+            throw new ValidacionException("La nueva contraseña no puede ser igual a la actual");
+
+        usuario.setPasswordHash(passwordEncoder.encode(request.getPasswordNueva()));
+        usuarioSaasRepository.save(usuario);
     }
 }

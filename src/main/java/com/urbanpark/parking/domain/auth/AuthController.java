@@ -63,4 +63,14 @@ public class AuthController {
         authService.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.success("Contraseña actualizada exitosamente", null));
     }
+
+    @PutMapping("/me/password")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Cambiar contraseña del usuario autenticado")
+    public ResponseEntity<ApiResponse<Void>> cambiarPassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+
+        authService.cambiarPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Contraseña actualizada exitosamente", null));
+    }
 }
