@@ -57,8 +57,8 @@ public class ContactoController {
     @GetMapping("/seguimiento/{codigo}")
     @Operation(summary = "Obtener un mensaje de contacto por su código de seguimiento (Público)", 
                description = "Permite a los clientes finales buscar una consulta directamente ingresando su código único (Ej: CON-A318BC16).")
-    public ResponseEntity<ApiResponse<ContactoResponse>> buscarPorCodigo(@PathVariable String codigo) {
-        ContactoResponse response = service.buscarPorCodigoSeguimiento(codigo);
+    public ResponseEntity<ApiResponse<ContactoPublicResponse>> buscarPorCodigo(@PathVariable String codigo) {
+        ContactoPublicResponse response = service.buscarPorCodigoSeguimiento(codigo);
         return ResponseEntity.ok(ApiResponse.success("Consulta recuperada con éxito", response));
     }
 
