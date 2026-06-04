@@ -4,7 +4,6 @@ import com.urbanpark.parking.domain.titulares.dto.TitularRequest;
 import com.urbanpark.parking.domain.titulares.dto.TitularResponse;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaas;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaasService;
-import com.urbanpark.parking.shared.exceptions.AccesoDenegadoException;
 import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
 import com.urbanpark.parking.shared.exceptions.ValidacionException;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +19,7 @@ public class TitularService {
     private final TitularRepository titularRepository;
     private final UsuarioSaasService usuarioSaasService;
 
-    // ─── Completar datos del titular (el propio cliente) ─────
+    // Completar datos del titular (el propio cliente)
     @Transactional
     public TitularResponse completarDatos(TitularRequest request) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
@@ -43,14 +42,15 @@ public class TitularService {
         return toResponse(titular);
     }
 
-    // ─── Ver mis datos de titular ─────────────────────────────
+    // Ver mis datos de titular
+    @Transactional(readOnly = true)
     public TitularResponse obtenerMiTitular() {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = findByUsuarioId(usuario.getId());
         return toResponse(titular);
     }
 
-    // ─── Actualizar datos del titular ────────────────────────
+    // Actualizar datos del titular
     @Transactional
     public TitularResponse actualizar(TitularRequest request) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
@@ -70,12 +70,14 @@ public class TitularService {
         return toResponse(titular);
     }
 
-    // ─── Ver titular por ID (admin) ───────────────────────────
+    // Ver titular por ID (admin)
+    @Transactional(readOnly = true)
     public TitularResponse obtenerPorId(Long id) {
         return toResponse(findById(id));
     }
 
-    // ─── Listar todos los titulares (admin) ───────────────────
+    // Listar todos los titulares (admin)
+    @Transactional(readOnly = true)
     public List<TitularResponse> listarTodos() {
         return titularRepository.findAll()
                 .stream()
@@ -83,13 +85,15 @@ public class TitularService {
                 .toList();
     }
 
-    // ─── Helpers ──────────────────────────────────────────────
+    // Helpers
+    @Transactional(readOnly = true)
     public Titular findByUsuarioId(Long usuarioId) {
         return titularRepository.findByUsuarioSaasId(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Debes completar tus datos de titular primero"));
     }
 
+    @Transactional(readOnly = true)
     public Titular findById(Long id) {
         return titularRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -113,6 +117,7 @@ public class TitularService {
                 .build();
     }
 
+    @Transactional
     public Titular guardar(Titular titular) {
         return titularRepository.save(titular);
     }

@@ -31,7 +31,7 @@ public class SolicitudPlanService {
     private final PlanService planService;
     private final UsuarioSaasService usuarioSaasService;
 
-    // ─── Cliente solicita un plan ─────────────────────────────
+    // Cliente solicita un plan
     @Transactional
     public SolicitudPlanResponse solicitar(SolicitudPlanRequest request) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
@@ -62,7 +62,8 @@ public class SolicitudPlanService {
         return toResponse(solicitud);
     }
 
-    // ─── Cliente ve su última solicitud ──────────────────────
+    // Cliente ve su última solicitud
+    @Transactional(readOnly = true)
     public SolicitudPlanResponse obtenerMiSolicitud() {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = titularService.findByUsuarioId(usuario.getId());
@@ -75,7 +76,8 @@ public class SolicitudPlanService {
         return toResponse(solicitud);
     }
 
-    // ─── Admin lista todas las solicitudes pendientes ─────────
+    // Admin lista todas las solicitudes pendientes
+    @Transactional(readOnly = true)
     public List<SolicitudPlanResponse> listarPendientes() {
         return solicitudPlanRepository.findAllByEstado(EstadoSolicitud.PENDIENTE)
                 .stream()
@@ -84,6 +86,7 @@ public class SolicitudPlanService {
     }
 
     // Admin lista todas las solicitudes
+    @Transactional(readOnly = true)
     public List<SolicitudPlanResponse> listarTodas() {
         return solicitudPlanRepository.findAll()
                 .stream()
@@ -91,7 +94,7 @@ public class SolicitudPlanService {
                 .toList();
     }
 
-    // ─── Admin aprueba solicitud ──────────────────────────────
+    // Admin aprueba solicitud
     @Transactional
     public SolicitudPlanResponse aprobar(Long solicitudId) {
         UsuarioSaas admin = usuarioSaasService.getUsuarioActual();
@@ -121,7 +124,7 @@ public class SolicitudPlanService {
         return toResponse(solicitud);
     }
 
-    // ─── Admin rechaza solicitud ──────────────────────────────
+    // Admin rechaza solicitud
     @Transactional
     public SolicitudPlanResponse rechazar(Long solicitudId, RevisionSolicitudRequest request) {
         UsuarioSaas admin = usuarioSaasService.getUsuarioActual();
@@ -147,8 +150,9 @@ public class SolicitudPlanService {
         return toResponse(solicitud);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────
-    private SolicitudPlan findById(Long id) {
+    // Helpers
+    @Transactional(readOnly = true)
+    protected SolicitudPlan findById(Long id) {
         return solicitudPlanRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Solicitud no encontrada con id: " + id));

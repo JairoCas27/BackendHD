@@ -22,7 +22,8 @@ public class UsuarioSaasService {
     private final UsuarioSaasRepository usuarioSaasRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // ─── Obtener usuario autenticado actual ──────────────────
+    // Obtener usuario autenticado actual
+    @Transactional(readOnly = true)
     public UsuarioSaas getUsuarioActual() {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
@@ -30,7 +31,7 @@ public class UsuarioSaasService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
     }
 
-    // ─── Crear ADMIN o SUPERADMIN ────────────────────────────
+    // Crear ADMIN o SUPERADMIN
     @Transactional
     public UsuarioSaasResponse crearUsuarioInterno(CrearUsuarioAdminRequest request) {
         UsuarioSaas creador = getUsuarioActual();
@@ -72,7 +73,8 @@ public class UsuarioSaasService {
         return toResponse(nuevo);
     }
 
-    // ─── Listar todos los usuarios internos (ADMIN + SUPERADMIN) ─
+    // Listar todos los usuarios internos (ADMIN + SUPERADMIN)
+    @Transactional(readOnly = true)
     public List<UsuarioSaasResponse> listarUsuariosInternos() {
         return usuarioSaasRepository.findAllByRolIn(
                         List.of(RolSaas.ADMIN, RolSaas.SUPERADMIN))
@@ -81,7 +83,8 @@ public class UsuarioSaasService {
                 .toList();
     }
 
-    // ─── Listar clientes ──────────────────────────────────────
+    // Listar clientes
+    @Transactional(readOnly = true)
     public List<UsuarioSaasResponse> listarClientes() {
         return usuarioSaasRepository.findAllByRol(RolSaas.CLIENTE)
                 .stream()
@@ -89,12 +92,13 @@ public class UsuarioSaasService {
                 .toList();
     }
 
-    // ─── Obtener por ID ───────────────────────────────────────
+    // Obtener por ID
+    @Transactional(readOnly = true)
     public UsuarioSaasResponse obtenerPorId(Long id) {
         return toResponse(findById(id));
     }
 
-    // ─── Actualizar estado ────────────────────────────────────
+    // Actualizar estado
     @Transactional
     public UsuarioSaasResponse actualizarEstado(Long id, ActualizarEstadoRequest request) {
         UsuarioSaas usuario = findById(id);
@@ -107,7 +111,7 @@ public class UsuarioSaasService {
         return toResponse(usuario);
     }
 
-    // ─── Eliminar ─────────────────────────────────────────────
+    // Eliminar
     @Transactional
     public void eliminar(Long id) {
         UsuarioSaas usuario = findById(id);
@@ -118,8 +122,9 @@ public class UsuarioSaasService {
         usuarioSaasRepository.delete(usuario);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────
-    private UsuarioSaas findById(Long id) {
+    // Helpers
+    @Transactional(readOnly = true)
+    protected UsuarioSaas findById(Long id) {
         return usuarioSaasRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + id));
     }
@@ -143,6 +148,7 @@ public class UsuarioSaasService {
                 .build();
     }
 
+    @Transactional
     public UsuarioSaas guardar(UsuarioSaas usuario) {
         return usuarioSaasRepository.save(usuario);
     }
