@@ -4,6 +4,8 @@ import com.urbanpark.parking.domain.condominios.Condominio;
 import com.urbanpark.parking.domain.condominios.CondominioRepository;
 import com.urbanpark.parking.domain.planes.Plan;
 import com.urbanpark.parking.domain.planes.PlanRepository;
+import com.urbanpark.parking.domain.solicitudes.SolicitudPlan;
+import com.urbanpark.parking.domain.solicitudes.SolicitudPlanRepository;
 import com.urbanpark.parking.domain.titulares.Titular;
 import com.urbanpark.parking.domain.titulares.TitularRepository;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaas;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Component
@@ -27,6 +30,7 @@ public class DataInitializer implements CommandLineRunner {
     private final TitularRepository titularRepository;
     private final PlanRepository planRepository;
     private final CondominioRepository condominioRepository;
+    private final SolicitudPlanRepository solicitudPlanRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -37,108 +41,96 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
-        crearSuperAdmin();
-        crearAdmin();
-        Plan planBasico = crearPlanes();
-        crearCliente(planBasico);
+        UsuarioSaas superAdmin = crearSuperAdmin();
+        UsuarioSaas admin1 = crearAdmin1(superAdmin);
+        UsuarioSaas admin2 = crearAdmin2(superAdmin);
+
+        Plan basico     = crearPlan("Básico",      "1 condominio incluido",   LimiteCondominios.UNO,       new BigDecimal("99.00"));
+        Plan pro        = crearPlan("Pro",          "Hasta 3 condominios",     LimiteCondominios.TRES,      new BigDecimal("249.00"));
+        Plan enterprise = crearPlan("Enterprise",   "Condominios ilimitados",  LimiteCondominios.ILIMITADO, new BigDecimal("599.00"));
+
+        crearCliente1(admin1, basico);
+        crearCliente2(admin1, pro);
+        crearCliente3(admin2, enterprise);
+        crearCliente4(admin2, basico);
 
         log.info("Inicialización completa");
     }
 
-    private void crearSuperAdmin() {
-        UsuarioSaas superAdmin = UsuarioSaas.builder()
+    private UsuarioSaas crearSuperAdmin() {
+        UsuarioSaas u = UsuarioSaas.builder()
                 .email("superadmin@urbanpark.com")
                 .passwordHash(passwordEncoder.encode("superadmin"))
-                .nombres("Carlos")
-                .apellidos("Mendoza")
-                .dni("00000001")
-                .telefono("999000001")
+                .nombres("Carlos").apellidos("Mendoza")
+                .dni("00000001").telefono("999000001")
                 .rol(RolSaas.SUPERADMIN)
                 .estado(EstadoUsuarioSaas.ACTIVO)
                 .origenRegistro(OrigenRegistro.SUPERADMIN)
-                .creadoPor(null)
-                .esBaseProtegido(true)
+                .creadoPor(null).esBaseProtegido(true)
                 .build();
-
-        usuarioSaasRepository.save(superAdmin);
-        log.info("SUPERADMIN creado: superadmin@urbanpark.com / superadmin");
+        return usuarioSaasRepository.save(u);
     }
 
-    private void crearAdmin() {
-        UsuarioSaas superAdmin = usuarioSaasRepository.findByEmail("superadmin@urbanpark.com").orElseThrow();
-
-        UsuarioSaas admin = UsuarioSaas.builder()
-                .email("admin@urbanpark.com")
+    private UsuarioSaas crearAdmin1(UsuarioSaas superAdmin) {
+        UsuarioSaas u = UsuarioSaas.builder()
+                .email("alana.garcia@urbanpark.com")
                 .passwordHash(passwordEncoder.encode("admin123"))
-                .nombres("Lucía")
-                .apellidos("Torres")
-                .dni("00000002")
-                .telefono("999000002")
+                .nombres("Alana").apellidos("Garcia Ramirez")
+                .dni("70998232").telefono("904898321")
                 .rol(RolSaas.ADMIN)
                 .estado(EstadoUsuarioSaas.ACTIVO)
                 .origenRegistro(OrigenRegistro.SUPERADMIN)
-                .creadoPor(superAdmin)
-                .esBaseProtegido(false)
+                .creadoPor(superAdmin).esBaseProtegido(false)
                 .build();
-
-        usuarioSaasRepository.save(admin);
-        log.info("ADMIN creado: admin@urbanpark.com / admin123");
+        return usuarioSaasRepository.save(u);
     }
 
-    private Plan crearPlanes() {
-        Plan basico = Plan.builder()
-                .nombre("Básico")
-                .descripcion("1 condominio incluido")
-                .limiteCondominios(LimiteCondominios.UNO)
-                .precio(new BigDecimal("99.00"))
-                .moneda("PEN")
-                .estado(EstadoPlan.ACTIVO)
+    private UsuarioSaas crearAdmin2(UsuarioSaas superAdmin) {
+        UsuarioSaas u = UsuarioSaas.builder()
+                .email("roberto.salas@urbanpark.com")
+                .passwordHash(passwordEncoder.encode("admin123"))
+                .nombres("Roberto").apellidos("Salas Vega")
+                .dni("70998233").telefono("904898322")
+                .rol(RolSaas.ADMIN)
+                .estado(EstadoUsuarioSaas.ACTIVO)
+                .origenRegistro(OrigenRegistro.SUPERADMIN)
+                .creadoPor(superAdmin).esBaseProtegido(false)
                 .build();
-
-        Plan pro = Plan.builder()
-                .nombre("Pro")
-                .descripcion("Hasta 3 condominios")
-                .limiteCondominios(LimiteCondominios.TRES)
-                .precio(new BigDecimal("249.00"))
-                .moneda("PEN")
-                .estado(EstadoPlan.ACTIVO)
-                .build();
-
-        Plan enterprise = Plan.builder()
-                .nombre("Enterprise")
-                .descripcion("Condominios ilimitados")
-                .limiteCondominios(LimiteCondominios.ILIMITADO)
-                .precio(new BigDecimal("599.00"))
-                .moneda("PEN")
-                .estado(EstadoPlan.ACTIVO)
-                .build();
-
-        planRepository.save(basico);
-        planRepository.save(pro);
-        planRepository.save(enterprise);
-        log.info("Planes creados: Básico / Pro / Enterprise");
-
-        return basico;
+        return usuarioSaasRepository.save(u);
     }
 
-    private void crearCliente(Plan plan) {
-        UsuarioSaas cliente = UsuarioSaas.builder()
-                .email("cliente@urbanpark.com")
-                .passwordHash(passwordEncoder.encode("cliente123"))
-                .nombres("Juan Carlos")
-                .apellidos("Pérez Quispe")
-                .dni("00000003")
-                .telefono("999000003")
+    private Plan crearPlan(String nombre, String desc, LimiteCondominios limite, BigDecimal precio) {
+        return planRepository.save(Plan.builder()
+                .nombre(nombre).descripcion(desc)
+                .limiteCondominios(limite)
+                .precio(precio).moneda("PEN")
+                .estado(EstadoPlan.ACTIVO)
+                .build());
+    }
+
+    private void crearSolicitudAprobada(Titular titular, Plan plan, UsuarioSaas admin) {
+        solicitudPlanRepository.save(SolicitudPlan.builder()
+                .titular(titular)
+                .plan(plan)
+                .estado(EstadoSolicitud.APROBADA)
+                .revisadoPor(admin)
+                .fechaRevision(LocalDateTime.now())
+                .build());
+    }
+
+    private void crearCliente1(UsuarioSaas admin, Plan plan) {
+        UsuarioSaas cliente = usuarioSaasRepository.save(UsuarioSaas.builder()
+                .email("juan404999+1@gmail.com")
+                .passwordHash(passwordEncoder.encode("Cuenta123"))
+                .nombres("Juan").apellidos("Lopez Perez")
+                .dni("70898332").telefono("902983421")
                 .rol(RolSaas.CLIENTE)
                 .estado(EstadoUsuarioSaas.ACTIVO)
                 .origenRegistro(OrigenRegistro.PUBLICO)
-                .creadoPor(null)
-                .esBaseProtegido(false)
-                .build();
+                .creadoPor(null).esBaseProtegido(false)
+                .build());
 
-        usuarioSaasRepository.save(cliente);
-
-        Titular titular = Titular.builder()
+        Titular titular = titularRepository.save(Titular.builder()
                 .usuarioSaas(cliente)
                 .razonSocial("Inmobiliaria Pérez SAC")
                 .ruc("20501234567")
@@ -146,11 +138,12 @@ public class DataInitializer implements CommandLineRunner {
                 .representanteLegal("Juan Carlos Pérez Quispe")
                 .plan(plan)
                 .estadoPlan(EstadoPlan.ACTIVO)
-                .build();
+                .fechaAsignacionPlan(LocalDateTime.now())
+                .build());
 
-        titularRepository.save(titular);
+        crearSolicitudAprobada(titular, plan, admin);
 
-        Condominio condominio = Condominio.builder()
+        condominioRepository.save(Condominio.builder()
                 .titular(titular)
                 .nombre("Edificio Aurora")
                 .slug("edificio-aurora")
@@ -159,14 +152,165 @@ public class DataInitializer implements CommandLineRunner {
                 .direccion("Calle Los Pinos 456, Miraflores, Lima")
                 .emailCondominio("contacto@aurora.pe")
                 .telefonoCondominio("014445566")
-                .apiBaseUrl("https://api.aurora.pe")
+                .apiBaseUrl("https://sistemagestioncondominios-backend.onrender.com")
                 .estado(EstadoCondominio.ACTIVO)
-                .build();
+                .verificadoPor(admin)
+                .fechaVerificacion(LocalDateTime.now())
+                .build());
+    }
 
-        condominioRepository.save(condominio);
+    private void crearCliente2(UsuarioSaas admin, Plan plan) {
+        UsuarioSaas cliente = usuarioSaasRepository.save(UsuarioSaas.builder()
+                .email("juan404999+2@gmail.com")
+                .passwordHash(passwordEncoder.encode("Cuenta123"))
+                .nombres("María").apellidos("Torres Huanca")
+                .dni("70898333").telefono("902983422")
+                .rol(RolSaas.CLIENTE)
+                .estado(EstadoUsuarioSaas.ACTIVO)
+                .origenRegistro(OrigenRegistro.PUBLICO)
+                .creadoPor(null).esBaseProtegido(false)
+                .build());
 
-        log.info("CLIENTE creado: cliente@urbanpark.com / cliente123");
-        log.info("Titular: Inmobiliaria Pérez SAC | Plan: Básico");
-        log.info("Condominio: Edificio Aurora → ACTIVO");
+        Titular titular = titularRepository.save(Titular.builder()
+                .usuarioSaas(cliente)
+                .razonSocial("Constructora Torres SAC")
+                .ruc("20501234568")
+                .direccionFiscal("Av. Arequipa 789, Miraflores, Lima")
+                .representanteLegal("María Torres Huanca")
+                .plan(plan)
+                .estadoPlan(EstadoPlan.ACTIVO)
+                .fechaAsignacionPlan(LocalDateTime.now())
+                .build());
+
+        crearSolicitudAprobada(titular, plan, admin);
+
+        condominioRepository.save(Condominio.builder()
+                .titular(titular)
+                .nombre("Torre Azul")
+                .slug("torre-azul")
+                .razonSocial("Torre Azul SAC")
+                .ruc("20602222222")
+                .direccion("Av. Arequipa 789, Miraflores, Lima")
+                .emailCondominio("admin@torreazul.pe")
+                .telefonoCondominio("014556677")
+                .apiBaseUrl("https://api.torreazul.pe")
+                .estado(EstadoCondominio.ACTIVO)
+                .verificadoPor(admin)
+                .fechaVerificacion(LocalDateTime.now())
+                .build());
+
+        condominioRepository.save(Condominio.builder()
+                .titular(titular)
+                .nombre("Residencial Las Palmas")
+                .slug("residencial-las-palmas")
+                .razonSocial("Las Palmas SRL")
+                .ruc("20602222223")
+                .direccion("Calle Las Palmas 321, San Borja, Lima")
+                .emailCondominio("info@laspalmas.pe")
+                .telefonoCondominio("014667788")
+                .apiBaseUrl("https://api.laspalmas.pe")
+                .estado(EstadoCondominio.PENDIENTE_VERIFICACION)
+                .build());
+    }
+
+    private void crearCliente3(UsuarioSaas admin, Plan plan) {
+        UsuarioSaas cliente = usuarioSaasRepository.save(UsuarioSaas.builder()
+                .email("juan404999+3@gmail.com")
+                .passwordHash(passwordEncoder.encode("Cuenta123"))
+                .nombres("Ricardo").apellidos("Vargas Mendoza")
+                .dni("70898334").telefono("902983423")
+                .rol(RolSaas.CLIENTE)
+                .estado(EstadoUsuarioSaas.ACTIVO)
+                .origenRegistro(OrigenRegistro.PUBLICO)
+                .creadoPor(null).esBaseProtegido(false)
+                .build());
+
+        Titular titular = titularRepository.save(Titular.builder()
+                .usuarioSaas(cliente)
+                .razonSocial("Grupo Vargas Inmobiliaria SA")
+                .ruc("20501234569")
+                .direccionFiscal("Calle Schell 230, Miraflores, Lima")
+                .representanteLegal("Ricardo Vargas Mendoza")
+                .plan(plan)
+                .estadoPlan(EstadoPlan.ACTIVO)
+                .fechaAsignacionPlan(LocalDateTime.now())
+                .build());
+
+        crearSolicitudAprobada(titular, plan, admin);
+
+        condominioRepository.save(Condominio.builder()
+                .titular(titular)
+                .nombre("Condominio Los Cedros")
+                .slug("condominio-los-cedros")
+                .razonSocial("Los Cedros SA")
+                .ruc("20603333331")
+                .direccion("Av. Los Cedros 100, Surco, Lima")
+                .emailCondominio("contacto@loscedros.pe")
+                .telefonoCondominio("017778899")
+                .apiBaseUrl("https://api.loscedros.pe")
+                .estado(EstadoCondominio.ACTIVO)
+                .verificadoPor(admin)
+                .fechaVerificacion(LocalDateTime.now())
+                .build());
+
+        condominioRepository.save(Condominio.builder()
+                .titular(titular)
+                .nombre("Parque Residencial Norte")
+                .slug("parque-residencial-norte")
+                .razonSocial("Parque Norte SAC")
+                .ruc("20603333332")
+                .direccion("Av. Universitaria 2500, Los Olivos, Lima")
+                .emailCondominio("info@parquenorte.pe")
+                .telefonoCondominio("015556677")
+                .apiBaseUrl("https://api.parquenorte.pe")
+                .estado(EstadoCondominio.ACTIVO)
+                .verificadoPor(admin)
+                .fechaVerificacion(LocalDateTime.now())
+                .build());
+
+        condominioRepository.save(Condominio.builder()
+                .titular(titular)
+                .nombre("Villa del Sol")
+                .slug("villa-del-sol")
+                .razonSocial("Villa del Sol SRL")
+                .ruc("20603333333")
+                .direccion("Calle del Sol 890, La Molina, Lima")
+                .emailCondominio("contacto@villadelsol.pe")
+                .telefonoCondominio("013334455")
+                .apiBaseUrl("https://api.villadelsol.pe")
+                .estado(EstadoCondominio.PENDIENTE_VERIFICACION)
+                .build());
+    }
+
+    private void crearCliente4(UsuarioSaas admin, Plan plan) {
+        UsuarioSaas cliente = usuarioSaasRepository.save(UsuarioSaas.builder()
+                .email("juan404999+4@gmail.com")
+                .passwordHash(passwordEncoder.encode("Cuenta123"))
+                .nombres("Sofía").apellidos("Quispe Mamani")
+                .dni("70898335").telefono("902983424")
+                .rol(RolSaas.CLIENTE)
+                .estado(EstadoUsuarioSaas.PENDIENTE_APROBACION)
+                .origenRegistro(OrigenRegistro.PUBLICO)
+                .creadoPor(null).esBaseProtegido(false)
+                .build());
+
+        Titular titular = titularRepository.save(Titular.builder()
+                .usuarioSaas(cliente)
+                .razonSocial("Quispe & Asociados SAC")
+                .ruc("20501234570")
+                .direccionFiscal("Jr. Huancayo 456, Breña, Lima")
+                .representanteLegal("Sofía Quispe Mamani")
+                .plan(null)
+                .estadoPlan(null)
+                .fechaAsignacionPlan(null)
+                .build());
+
+        solicitudPlanRepository.save(SolicitudPlan.builder()
+                .titular(titular)
+                .plan(plan)
+                .estado(EstadoSolicitud.PENDIENTE)
+                .revisadoPor(null)
+                .fechaRevision(null)
+                .build());
     }
 }
