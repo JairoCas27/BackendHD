@@ -7,8 +7,10 @@ import com.urbanpark.parking.domain.titulares.Titular;
 import com.urbanpark.parking.domain.titulares.TitularService;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaas;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaasService;
+import com.urbanpark.parking.shared.audit.AuditableAction;
 import com.urbanpark.parking.shared.enums.EstadoCondominio;
 import com.urbanpark.parking.shared.enums.EstadoPlan;
+import com.urbanpark.parking.shared.enums.TipoAccionAudit;
 import com.urbanpark.parking.shared.exceptions.AccesoDenegadoException;
 import com.urbanpark.parking.shared.exceptions.LimitePlanExcedidoException;
 import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
@@ -26,21 +28,23 @@ import java.util.List;
 public class CondominioService {
 
     private final CondominioRepository condominioRepository;
-    private final TitularService titularService;
-    private final UsuarioSaasService usuarioSaasService;
+    private final TitularService       titularService;
+    private final UsuarioSaasService   usuarioSaasService;
 
-    // ─── Cliente registra un condominio ───────────────────────
     @Transactional
+    @AuditableAction(
+            accion      = TipoAccionAudit.CONDOMINIO_CREADO,
+            descripcion = "Cliente registra nuevo condominio",
+            entidad     = "Condominio"
+    )
     public CondominioResponse registrar(CondominioRequest request) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = titularService.findByUsuarioId(usuario.getId());
 
-        // Guard 1: debe tener plan activo
         if (titular.getEstadoPlan() != EstadoPlan.ACTIVO)
             throw new AccesoDenegadoException(
                     "Debes tener un plan activo para registrar condominios");
 
-        // Guard 2: validar límite del plan
         long condominiosActivos = condominioRepository
                 .countByTitularAndEstadoNot(titular, EstadoCondominio.RECHAZADO);
 
@@ -51,7 +55,6 @@ public class CondominioService {
                             titular.getPlan().getLimiteCondominios().getValor() +
                             " condominio(s)");
 
-        // Guard 3: slug único
         String slug = SlugUtils.generate(request.getNombre());
         if (condominioRepository.existsBySlug(slug))
             slug = slug + "-" + System.currentTimeMillis();
@@ -73,7 +76,6 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
-    // ─── Cliente lista sus condominios ────────────────────────
     public List<CondominioResponse> listarMisCondominios() {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = titularService.findByUsuarioId(usuario.getId());
@@ -84,7 +86,6 @@ public class CondominioService {
                 .toList();
     }
 
-    // ─── Admin lista condominios pendientes ───────────────────
     public List<CondominioResponse> listarPendientes() {
         return condominioRepository
                 .findAllByEstado(EstadoCondominio.PENDIENTE_VERIFICACION)
@@ -93,7 +94,6 @@ public class CondominioService {
                 .toList();
     }
 
-    // ─── Admin lista todos los condominios ────────────────────
     public List<CondominioResponse> listarTodos() {
         return condominioRepository.findAll()
                 .stream()
@@ -101,14 +101,19 @@ public class CondominioService {
                 .toList();
     }
 
-    // ─── Admin aprueba condominio ─────────────────────────────
     @Transactional
+    @AuditableAction(
+            accion      = TipoAccionAudit.CONDOMINIO_ACTIVADO,
+            descripcion = "Admin aprueba condominio",
+            entidad     = "Condominio"
+    )
     public CondominioResponse aprobar(Long id) {
         UsuarioSaas admin = usuarioSaasService.getUsuarioActual();
         Condominio condominio = findById(id);
 
         if (condominio.getEstado() != EstadoCondominio.PENDIENTE_VERIFICACION)
-            throw new ValidacionException("Solo se pueden aprobar condominios en estado PENDIENTE_VERIFICACION");
+            throw new ValidacionException(
+                    "Solo se pueden aprobar condominios en estado PENDIENTE_VERIFICACION");
 
         condominio.setEstado(EstadoCondominio.ACTIVO);
         condominio.setVerificadoPor(admin);
@@ -118,14 +123,19 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
-    // ─── Admin rechaza condominio ─────────────────────────────
     @Transactional
+    @AuditableAction(
+            accion      = TipoAccionAudit.CONDOMINIO_DESACTIVADO,
+            descripcion = "Admin rechaza condominio",
+            entidad     = "Condominio"
+    )
     public CondominioResponse rechazar(Long id, VerificacionRequest request) {
         UsuarioSaas admin = usuarioSaasService.getUsuarioActual();
         Condominio condominio = findById(id);
 
         if (condominio.getEstado() != EstadoCondominio.PENDIENTE_VERIFICACION)
-            throw new ValidacionException("Solo se pueden rechazar condominios en estado PENDIENTE_VERIFICACION");
+            throw new ValidacionException(
+                    "Solo se pueden rechazar condominios en estado PENDIENTE_VERIFICACION");
 
         if (request.getMotivoRechazo() == null || request.getMotivoRechazo().isBlank())
             throw new ValidacionException("El motivo de rechazo es obligatorio");
@@ -139,7 +149,6 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────
     private Condominio findById(Long id) {
         return condominioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
