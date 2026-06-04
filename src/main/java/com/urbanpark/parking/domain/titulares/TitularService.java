@@ -4,6 +4,8 @@ import com.urbanpark.parking.domain.titulares.dto.TitularRequest;
 import com.urbanpark.parking.domain.titulares.dto.TitularResponse;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaas;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaasService;
+import com.urbanpark.parking.shared.audit.AuditableAction;
+import com.urbanpark.parking.shared.enums.TipoAccionAudit;
 import com.urbanpark.parking.shared.exceptions.AccesoDenegadoException;
 import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
 import com.urbanpark.parking.shared.exceptions.ValidacionException;
@@ -17,11 +19,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TitularService {
 
-    private final TitularRepository titularRepository;
+    private final TitularRepository  titularRepository;
     private final UsuarioSaasService usuarioSaasService;
 
-    // ─── Completar datos del titular (el propio cliente) ─────
     @Transactional
+    @AuditableAction(
+            accion      = TipoAccionAudit.SAAS_USUARIO_CREADO,
+            descripcion = "Cliente completa datos de titular",
+            entidad     = "Titular"
+    )
     public TitularResponse completarDatos(TitularRequest request) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
 
@@ -29,7 +35,8 @@ public class TitularService {
             throw new ValidacionException("Ya completaste tus datos de titular");
 
         if (titularRepository.existsByRuc(request.getRuc()))
-            throw new ValidacionException("Ya existe un titular con el RUC: " + request.getRuc());
+            throw new ValidacionException(
+                    "Ya existe un titular con el RUC: " + request.getRuc());
 
         Titular titular = Titular.builder()
                 .usuarioSaas(usuario)
@@ -43,23 +50,26 @@ public class TitularService {
         return toResponse(titular);
     }
 
-    // ─── Ver mis datos de titular ─────────────────────────────
     public TitularResponse obtenerMiTitular() {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = findByUsuarioId(usuario.getId());
         return toResponse(titular);
     }
 
-    // ─── Actualizar datos del titular ────────────────────────
     @Transactional
+    @AuditableAction(
+            accion      = TipoAccionAudit.SAAS_USUARIO_ACTIVADO,
+            descripcion = "Cliente actualiza datos de titular",
+            entidad     = "Titular"
+    )
     public TitularResponse actualizar(TitularRequest request) {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = findByUsuarioId(usuario.getId());
 
-        // Si cambia el RUC, verificar que no esté en uso por otro
         if (!titular.getRuc().equals(request.getRuc())
                 && titularRepository.existsByRuc(request.getRuc()))
-            throw new ValidacionException("Ya existe un titular con el RUC: " + request.getRuc());
+            throw new ValidacionException(
+                    "Ya existe un titular con el RUC: " + request.getRuc());
 
         titular.setRazonSocial(request.getRazonSocial());
         titular.setRuc(request.getRuc());
@@ -70,12 +80,10 @@ public class TitularService {
         return toResponse(titular);
     }
 
-    // ─── Ver titular por ID (admin) ───────────────────────────
     public TitularResponse obtenerPorId(Long id) {
         return toResponse(findById(id));
     }
 
-    // ─── Listar todos los titulares (admin) ───────────────────
     public List<TitularResponse> listarTodos() {
         return titularRepository.findAll()
                 .stream()
@@ -83,7 +91,6 @@ public class TitularService {
                 .toList();
     }
 
-    // ─── Helpers ──────────────────────────────────────────────
     public Titular findByUsuarioId(Long usuarioId) {
         return titularRepository.findByUsuarioSaasId(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException(
