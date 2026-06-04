@@ -1,10 +1,5 @@
 package com.urbanpark.parking.domain.reports;
 
-public class ReportService {
-    
-}
-package com.urbanpark.parking.domain.reports;
-
 import com.urbanpark.parking.domain.planes.Plan;
 import com.urbanpark.parking.domain.planes.PlanRepository;
 import com.urbanpark.parking.domain.reports.dto.*;
