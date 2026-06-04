@@ -15,7 +15,8 @@ public class ReglaResponse {
     private String condominioNombre;
     private TipoRegla tipo;
     private String nombre;
-    
+    private String descripcion;
+    private String configuracion;
     private boolean activa;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
