@@ -80,7 +80,17 @@ public class RuleEngine {
         };
     }
 
-    
+    private ValidacionResult evaluarHorario(ReglaAcceso regla, JsonNode json, LocalTime hora) {
+        LocalTime inicio = LocalTime.parse(json.get("horaInicio").asText());
+        LocalTime fin = LocalTime.parse(json.get("horaFin").asText());
+        boolean dentro = !hora.isBefore(inicio) && !hora.isAfter(fin);
+
+        if (dentro) {
+            return ok();
+        }
+        return denegado(regla,
+                "Acceso fuera del horario permitido (" + inicio + " - " + fin + ")");
+    }
 
     private ValidacionResult evaluarLimiteVehiculos(
             ReglaAcceso regla, JsonNode json, ValidacionRequest request) {
