@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/reportes")
 @RequiredArgsConstructor
 @Tag(name = "Reportes y Estadísticas", description = "Endpoints para obtener estadísticas del sistema")
-@SecurityRequirement(name = "Bearer Authentication")
+@SecurityRequirement(name = "bearerAuth")
 public class ReportController {
 
     private final ReportService reportService;

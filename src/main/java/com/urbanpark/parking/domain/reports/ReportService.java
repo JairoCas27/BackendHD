@@ -12,6 +12,7 @@ import com.urbanpark.parking.shared.enums.EstadoUsuarioSaas;
 import com.urbanpark.parking.shared.enums.RolSaas;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;   // <-- importa esto
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -31,9 +32,10 @@ public class ReportService {
      *
      * @return GlobalStatsDTO con conteos de usuarios por rol
      */
+    @Transactional(readOnly = true)
     public GlobalStatsDTO obtenerEstadisticasGlobales() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        
+
         UsuarioStatsDTO usuarioStats = UsuarioStatsDTO.builder()
                 .totalSuperAdmins(contarPorRol(RolSaas.SUPERADMIN))
                 .totalAdmins(contarPorRol(RolSaas.ADMIN))
@@ -42,26 +44,20 @@ public class ReportService {
                 .timestamp(timestamp)
                 .build();
 
-        GlobalStatsDTO globalStats = GlobalStatsDTO.builder()
+        return GlobalStatsDTO.builder()
                 .usuarioStats(usuarioStats)
                 .timestamp(timestamp)
                 .periodo("Actualizado al día de hoy")
                 .build();
-
-        return globalStats;
     }
 
     /**
      * Obtiene estadísticas personales del titular (cliente).
-     * El usuario solo puede ver sus propias estadísticas.
-     * Si el usuario no tiene TITULAR, devuelve estadísticas vacías.
-     *
-     * @param usuarioId ID del usuario autenticado
-     * @return TitularStatsDTO con información del titular o datos vacíos
      */
+    @Transactional(readOnly = true)
     public TitularStatsDTO obtenerEstadisticasTitular(Long usuarioId) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        
+
         // Buscar el usuario primero para validar que existe
         UsuarioSaas usuario = usuarioSaasRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + usuarioId));
@@ -81,7 +77,7 @@ public class ReportService {
                     .build();
         }
 
-        // Si hay titular, retornar sus estadísticas
+        // Si hay titular, retornar sus estadísticas (aquí accedes a LAZY condominios)
         return TitularStatsDTO.builder()
                 .totalCondominios((long) titular.getCondominios().size())
                 .razonSocial(titular.getRazonSocial())
@@ -94,35 +90,30 @@ public class ReportService {
 
     /**
      * Obtiene estadísticas de clientes (CLIENTE role).
-     * Solo ADMIN puede acceder a este método.
-     *
-     * @return AdminClientesStatsDTO con estadísticas detalladas de clientes
      */
+    @Transactional(readOnly = true)
     public AdminClientesStatsDTO obtenerEstadisticasClientes() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        
-        // Obtener todos los clientes
+
         var todosLosClientes = usuarioSaasRepository.findAllByRol(RolSaas.CLIENTE);
         Long totalClientes = (long) todosLosClientes.size();
-        
-        // Contar por estado
+
         Long clientesActivos = todosLosClientes.stream()
                 .filter(u -> u.getEstado() == EstadoUsuarioSaas.ACTIVO)
                 .count();
-        
+
         Long clientesPendientes = todosLosClientes.stream()
                 .filter(u -> u.getEstado() == EstadoUsuarioSaas.PENDIENTE_PLAN)
                 .count();
-        
+
         Long clientesSuspendidos = todosLosClientes.stream()
                 .filter(u -> u.getEstado() == EstadoUsuarioSaas.SUSPENDIDO)
                 .count();
-        
-        // Contar total de condominios de todos los clientes
+
         Long totalCondominios = titularRepository.findAll().stream()
                 .mapToLong(t -> (long) t.getCondominios().size())
                 .sum();
-        
+
         return AdminClientesStatsDTO.builder()
                 .totalClientes(totalClientes)
                 .clientesActivos(clientesActivos)
@@ -133,29 +124,17 @@ public class ReportService {
                 .build();
     }
 
-    /**
-     * Cuenta el total de usuarios por rol específico.
-     *
-     * @param rol El rol a contar
-     * @return Long con el total de usuarios en ese rol
-     */
-    private Long contarPorRol(RolSaas rol) {
+    @Transactional(readOnly = true)
+    protected Long contarPorRol(RolSaas rol) {
         return (long) usuarioSaasRepository.findAllByRol(rol).size();
     }
 
-    /**
-     * Obtiene el top de planes más adquiridos.
-     *
-     * @param limit Número de planes a retornar
-     * @return TopPlanesStatsDTO con el top de planes
-     */
+    @Transactional(readOnly = true)
     public TopPlanesStatsDTO obtenerTopPlanes(int limit) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        
-        // Obtener todos los planes activos
+
         List<Plan> planesActivos = planRepository.findAllByEstado(EstadoPlan.ACTIVO);
-        
-        // Contar cuántos titulares tienen cada plan
+
         Map<Plan, Long> planCount = new HashMap<>();
         for (Plan plan : planesActivos) {
             Long count = titularRepository.findAll().stream()
@@ -163,16 +142,15 @@ public class ReportService {
                     .count();
             planCount.put(plan, count);
         }
-        
-        // Ordenar por cantidad de adquisiciones (descendente) y asignar posiciones
+
         List<TopPlanDTO> topPlanes = new ArrayList<>();
         int posicion = 1;
-        
+
         for (Map.Entry<Plan, Long> entry : planCount.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                 .limit(limit)
                 .collect(Collectors.toList())) {
-            
+
             TopPlanDTO topPlan = TopPlanDTO.builder()
                     .posicion(posicion)
                     .nombrePlan(entry.getKey().getNombre())
@@ -183,13 +161,13 @@ public class ReportService {
                     .limiteCondominios(entry.getKey().getLimiteCondominios().toString())
                     .estado(entry.getKey().getEstado().toString())
                     .build();
-            
+
             topPlanes.add(topPlan);
             posicion++;
         }
-        
+
         Long totalPlanesActivos = (long) planesActivos.size();
-        
+
         return TopPlanesStatsDTO.builder()
                 .topPlanes(topPlanes)
                 .totalPlanesActivos(totalPlanesActivos)
@@ -197,20 +175,14 @@ public class ReportService {
                 .build();
     }
 
-    /**
-     * Obtiene un reporte detallado completo con todas las estadísticas.
-     * Solo SUPERADMIN puede acceder a este método.
-     *
-     * @return ReporteDetalladoDTO con todas las estadísticas del sistema
-     */
+    @Transactional(readOnly = true)
     public ReporteDetalladoDTO obtenerReporteDetallado() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        
-        // Obtener todas las estadísticas
+
         GlobalStatsDTO estadisticasGlobales = obtenerEstadisticasGlobales();
         AdminClientesStatsDTO estadisticasClientes = obtenerEstadisticasClientes();
         TopPlanesStatsDTO topPlanesStats = obtenerTopPlanes(3);
-        
+
         return ReporteDetalladoDTO.builder()
                 .estadisticasGlobales(estadisticasGlobales)
                 .estadisticasClientes(estadisticasClientes)
