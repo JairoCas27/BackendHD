@@ -25,11 +25,12 @@ public class AuditLogAspect {
 
     @Around("@annotation(auditable)")
     public Object interceptar(ProceedingJoinPoint pjp, AuditableAction auditable) throws Throwable {
-        String endpoint   = "";
-        String metodo     = "";
-        String ip         = "desconocida";
 
-        // Extraer contexto HTTP si está disponible
+        // ── Contexto HTTP ──────────────────────────────────────────────────
+        String endpoint = "";
+        String metodo   = "";
+        String ip       = "desconocida";
+
         try {
             ServletRequestAttributes attrs =
                     (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -37,32 +38,34 @@ public class AuditLogAspect {
                 HttpServletRequest req = attrs.getRequest();
                 endpoint = req.getRequestURI();
                 metodo   = req.getMethod();
-                ip       = obtenerIp(req);
+                ip       = resolverIp(req);
             }
         } catch (Exception ignored) {}
 
-        // Extraer usuario autenticado
-        Long   usuarioId    = null;
-        String email        = "anónimo";
-        String rol          = "N/A";
+        // ── Usuario autenticado ────────────────────────────────────────────
+        Long   usuarioId = null;
+        String email     = "anónimo";
+        String rol       = "N/A";
 
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UsuarioSaas usuario) {
-                usuarioId = usuario.getId();
-                email     = usuario.getEmail();
-                rol       = usuario.getRol().name();
+            if (auth != null && auth.getPrincipal() instanceof UsuarioSaas u) {
+                usuarioId = u.getId();
+                email     = u.getEmail();
+                rol       = u.getRol().name();
             }
         } catch (Exception ignored) {}
 
-        // Ejecutar el método original
+        // ── Ejecución y registro ───────────────────────────────────────────
+        String desc = auditable.descripcion().isBlank()
+                ? pjp.getSignature().getName()
+                : auditable.descripcion();
+
         try {
             Object resultado = pjp.proceed();
             auditLogService.registrar(
                     usuarioId, email, rol,
-                    auditable.accion(),
-                    auditable.descripcion().isBlank() ? pjp.getSignature().getName() : auditable.descripcion(),
-                    auditable.entidad(),
+                    auditable.accion(), desc, auditable.entidad(),
                     endpoint, metodo, ip,
                     true, null
             );
@@ -70,9 +73,7 @@ public class AuditLogAspect {
         } catch (Throwable ex) {
             auditLogService.registrar(
                     usuarioId, email, rol,
-                    auditable.accion(),
-                    auditable.descripcion().isBlank() ? pjp.getSignature().getName() : auditable.descripcion(),
-                    auditable.entidad(),
+                    auditable.accion(), desc, auditable.entidad(),
                     endpoint, metodo, ip,
                     false, ex.getMessage()
             );
@@ -80,7 +81,7 @@ public class AuditLogAspect {
         }
     }
 
-    private String obtenerIp(HttpServletRequest req) {
+    private String resolverIp(HttpServletRequest req) {
         String ip = req.getHeader("X-Forwarded-For");
         if (ip == null || ip.isBlank()) ip = req.getRemoteAddr();
         return ip.contains(",") ? ip.split(",")[0].trim() : ip;
