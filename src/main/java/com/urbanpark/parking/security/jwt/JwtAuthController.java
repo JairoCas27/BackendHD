@@ -1,10 +1,12 @@
 package com.urbanpark.parking.security.jwt;
 
 import com.urbanpark.parking.domain.usuarios.UsuarioSaas;
+import com.urbanpark.parking.domain.usuarios.UsuarioSaasRepository;
 import com.urbanpark.parking.shared.dto.ApiResponse;
-import com.urbanpark.parking.shared.enums.RolSaas;
+import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -19,92 +21,90 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Auth", description = "Endpoints públicos de autenticación")
+@Tag(name = "Auth", description = "Endpoints de autenticación")
 @RequestMapping("/api/v1/auth")
 public class JwtAuthController {
 
     private final JwtService jwtService;
+    private final UsuarioSaasRepository usuarioSaasRepository;
 
     @PostMapping("/verify")
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(
-            summary = "Verificar validez de token JWT",
-            description = "Verifica si un token JWT es válido: firma correcta, no expirado y estructura válida. " +
-                    "Devuelve información del usuario si el token es válido."
+            summary = "Verificar token JWT",
+            description = "Verifica si el token es válido, no está expirado y pertenece a un usuario activo en la BD."
     )
     public ResponseEntity<ApiResponse<Map<String, Object>>> verifyToken(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String token = extractToken(request);
+        if (token == null)
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Missing or invalid Authorization header"));
-        }
-
-        String token = authHeader.substring(7);
+                    .body(ApiResponse.error("Token no encontrado en el header Authorization"));
 
         try {
-            boolean isValid = jwtService.isTokenValid(token);
+            String email = jwtService.extractEmail(token);
+            UsuarioSaas usuario = usuarioSaasRepository.findByEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
-            if (isValid) {
-                Map<String, Object> data = new HashMap<>();
-                data.put("valid", true);
-                data.put("email", jwtService.extractEmail(token));
-                return ResponseEntity.ok(ApiResponse.success("Token is valid", data));
-            } else {
-                Map<String, Object> data = new HashMap<>();
-                data.put("valid", false);
-                return ResponseEntity.ok(ApiResponse.success("Token is invalid or expired", data));
-            }
+            Map<String, Object> data = new HashMap<>();
+            data.put("valid", true);
+            data.put("email", usuario.getEmail());
+            data.put("rol", usuario.getRol());
+            data.put("estado", usuario.getEstado());
+            data.put("nombreCompleto", usuario.getNombreCompleto());
+
+            return ResponseEntity.ok(ApiResponse.success("Token válido", data));
+
+        } catch (ExpiredJwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Token expirado"));
+
         } catch (Exception e) {
-            return ResponseEntity.ok(ApiResponse.error("Invalid token: " + e.getMessage()));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Token inválido"));
         }
     }
 
     @PostMapping("/refresh")
     @Operation(
-            summary = "Refrescar token JWT expirado",
-            description = "Genera un nuevo token JWT a partir de un token expirado. " +
-                    "Extrae los claims del token anterior y crea uno nuevo con la misma información del usuario."
+            summary = "Refrescar token JWT",
+            description = "Genera un nuevo accessToken a partir del refreshToken. Envía el refreshToken en el header Authorization."
     )
     public ResponseEntity<ApiResponse<Map<String, Object>>> refreshToken(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String refreshToken = extractToken(request);
+        if (refreshToken == null)
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Missing or invalid Authorization header"));
-        }
-
-        String expiredToken = authHeader.substring(7);
+                    .body(ApiResponse.error("Token no encontrado en el header Authorization"));
 
         try {
-            String email = extractEmailIgnoreExpiration(expiredToken);
-            String rol = extractClaimIgnoreExpiration(expiredToken, "rol");
-            String nombres = extractClaimIgnoreExpiration(expiredToken, "nombres");
-            String apellidos = extractClaimIgnoreExpiration(expiredToken, "apellidos");
+            String email = extractEmailIgnoreExpiration(refreshToken);
 
-            if (email == null) {
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.error("Cannot extract user from token"));
-            }
+            if (email == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Token inválido"));
 
-            UsuarioSaas usuario = UsuarioSaas.builder()
-                    .email(email)
-                    .rol(rol != null ? RolSaas.valueOf(rol) : RolSaas.CLIENTE)
-                    .nombres(nombres != null ? nombres : "")
-                    .apellidos(apellidos != null ? apellidos : "")
-                    .build();
-
-            String newToken = jwtService.generateToken(usuario);
+            UsuarioSaas usuario = usuarioSaasRepository.findByEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
             Map<String, Object> data = new HashMap<>();
-            data.put("accessToken", newToken);
-            data.put("tokenType", "Bearer");
+            data.put("token", jwtService.generateToken(usuario));
+            data.put("refreshToken", jwtService.generateRefreshToken(usuario));
 
-            return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", data));
+            return ResponseEntity.ok(ApiResponse.success("Token renovado exitosamente", data));
+
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Usuario no encontrado"));
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Failed to refresh token: " + e.getMessage()));
+                    .body(ApiResponse.error("Token inválido"));
         }
+    }
+
+    private String extractToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
+        return authHeader.substring(7);
     }
 
     private String extractEmailIgnoreExpiration(String token) {
@@ -112,16 +112,6 @@ public class JwtAuthController {
             return jwtService.extractEmail(token);
         } catch (ExpiredJwtException e) {
             return e.getClaims().getSubject();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String extractClaimIgnoreExpiration(String token, String claimName) {
-        try {
-            return jwtService.extractClaims(token).get(claimName, String.class);
-        } catch (ExpiredJwtException e) {
-            return e.getClaims().get(claimName, String.class);
         } catch (Exception e) {
             return null;
         }
