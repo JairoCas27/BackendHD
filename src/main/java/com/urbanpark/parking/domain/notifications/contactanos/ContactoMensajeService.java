@@ -16,6 +16,7 @@ import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoReques
 import com.urbanpark.parking.domain.notifications.contactanos.dto.ContactoResponse;
 import com.urbanpark.parking.domain.notifications.contactanos.dto.RespuestaRequest;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaasRepository;
+import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
 
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -65,11 +66,11 @@ public class ContactoMensajeService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
-    public ContactoResponse buscarPorCodigoSeguimiento(String codigoSeguimiento) {
+ @Transactional(readOnly = true)
+    public ContactoPublicResponse buscarPorCodigoSeguimiento(String codigoSeguimiento) {
         ContactoMensaje mensaje = repository.findByCodigoSeguimiento(codigoSeguimiento)
-                .orElseThrow(() -> new RuntimeException("No se encontro ningun mensaje de contacto con el codigo: " + codigoSeguimiento));
-        return mapearAResponse(mensaje);
+                .orElseThrow(() -> new ResourceNotFoundException("El codigo de seguimiento ingresado no existe en el sistema."));
+        return mapearAResponsePublico(mensaje);
     }
 
     @Transactional
