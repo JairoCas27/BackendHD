@@ -46,7 +46,7 @@ public class ContactoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     @Operation(summary = "Listar todos los mensajes de contacto recibidos", 
                description = "Permite a los usuarios con rol ADMIN o SUPERADMIN listar y auditar todas las consultas enviadas por los usuarios.")
     public ResponseEntity<ApiResponse<List<ContactoResponse>>> listarMensajes() {
@@ -63,7 +63,7 @@ public class ContactoController {
     }
 
     @PatchMapping("/{id}/responder")
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     @Operation(summary = "Responder a un mensaje de contacto específico", 
                description = "Registra la respuesta en el sistema inyectando automáticamente el ID del Administrador logueado y enviando la resolución por email.")
     public ResponseEntity<ApiResponse<ContactoResponse>> responderMensaje(
@@ -79,7 +79,7 @@ public class ContactoController {
     }
 
     @GetMapping("/respondidos")
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     @Operation(summary = "Listar mensajes de contacto ya respondidos (Privado)", 
                description = "Permite a los administradores auditar el historial de consultas resueltas.")
     public ResponseEntity<ApiResponse<List<ContactoResponse>>> obtenerRespondidos() {
@@ -93,7 +93,7 @@ public class ContactoController {
     }
 
     @GetMapping("/pendientes")
-    @PreAuthorize("hasAnyRole('ADMIN_CONDOMINIO', 'SUPERADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     @Operation(summary = "Listar mensajes de contacto pendientes de respuesta (Privado)", 
                description = "Muestra únicamente las consultas que requieren atención inmediata. Si está vacío, confirma que todo está resuelto.")
     public ResponseEntity<ApiResponse<List<ContactoResponse>>> obtenerPendientes() {

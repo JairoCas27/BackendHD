@@ -1,11 +1,11 @@
 package com.urbanpark.parking.domain.usuarios;
 
 import com.urbanpark.parking.domain.usuarios.dto.*;
-import com.urbanpark.parking.shared.audit.AuditableAction;
+import com.urbanpark.parking.shared.audit.AuditableAction; 
 import com.urbanpark.parking.shared.enums.EstadoUsuarioSaas;
 import com.urbanpark.parking.shared.enums.OrigenRegistro;
 import com.urbanpark.parking.shared.enums.RolSaas;
-import com.urbanpark.parking.shared.enums.TipoAccionAudit;
+import com.urbanpark.parking.shared.enums.TipoAccionAudit; 
 import com.urbanpark.parking.shared.exceptions.AccesoDenegadoException;
 import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
 import com.urbanpark.parking.shared.exceptions.ValidacionException;
@@ -24,14 +24,16 @@ public class UsuarioSaasService {
     private final UsuarioSaasRepository usuarioSaasRepository;
     private final PasswordEncoder       passwordEncoder;
 
+    // Obtener usuario autenticado actual
+    @Transactional(readOnly = true) 
     public UsuarioSaas getUsuarioActual() {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
         return usuarioSaasRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
     }
 
+    // Crear ADMIN o SUPERADMIN 
     @Transactional
     @AuditableAction(
             accion      = TipoAccionAudit.SAAS_USUARIO_CREADO,
@@ -41,22 +43,20 @@ public class UsuarioSaasService {
     public UsuarioSaasResponse crearUsuarioInterno(CrearUsuarioAdminRequest request) {
         UsuarioSaas creador = getUsuarioActual();
 
+        // Solo ADMIN o SUPERADMIN permitidos como rol destino 
         if (request.getRol() == RolSaas.CLIENTE)
-            throw new ValidacionException(
-                    "No puedes crear un usuario con rol CLIENTE desde este endpoint");
+            throw new ValidacionException("No puedes crear un usuario con rol CLIENTE desde este endpoint");
 
+        // Solo SUPERADMIN puede crear otro SUPERADMIN 
         if (request.getRol() == RolSaas.SUPERADMIN
                 && creador.getRol() != RolSaas.SUPERADMIN)
-            throw new AccesoDenegadoException(
-                    "Solo un SUPERADMIN puede crear otro SUPERADMIN");
+            throw new AccesoDenegadoException("Solo un SUPERADMIN puede crear otro SUPERADMIN");
 
         if (usuarioSaasRepository.existsByEmail(request.getEmail()))
-            throw new ValidacionException(
-                    "Ya existe un usuario con el email: " + request.getEmail());
+            throw new ValidacionException("Ya existe un usuario con el email: " + request.getEmail());
 
         if (usuarioSaasRepository.existsByDni(request.getDni()))
-            throw new ValidacionException(
-                    "Ya existe un usuario con el DNI: " + request.getDni());
+            throw new ValidacionException("Ya existe un usuario con el DNI: " + request.getDni());
 
         OrigenRegistro origen = creador.getRol() == RolSaas.SUPERADMIN
                 ? OrigenRegistro.SUPERADMIN
@@ -80,6 +80,8 @@ public class UsuarioSaasService {
         return toResponse(nuevo);
     }
 
+    // Listar todos los usuarios internos (ADMIN + SUPERADMIN)
+    @Transactional(readOnly = true) 
     public List<UsuarioSaasResponse> listarUsuariosInternos() {
         return usuarioSaasRepository.findAllByRolIn(
                         List.of(RolSaas.ADMIN, RolSaas.SUPERADMIN))
@@ -88,6 +90,8 @@ public class UsuarioSaasService {
                 .toList();
     }
 
+    // Listar clientes
+    @Transactional(readOnly = true) 
     public List<UsuarioSaasResponse> listarClientes() {
         return usuarioSaasRepository.findAllByRol(RolSaas.CLIENTE)
                 .stream()
@@ -95,12 +99,15 @@ public class UsuarioSaasService {
                 .toList();
     }
 
+    // Obtener por ID 
+    @Transactional(readOnly = true)
     public UsuarioSaasResponse obtenerPorId(Long id) {
         return toResponse(findById(id));
     }
 
+    // Actualizar estado 
     @Transactional
-    @AuditableAction(
+    @AuditableAction( 
             accion      = TipoAccionAudit.SAAS_USUARIO_ACTIVADO,
             descripcion = "Cambio de estado de usuario SaaS",
             entidad     = "UsuarioSaas"
@@ -109,16 +116,16 @@ public class UsuarioSaasService {
         UsuarioSaas usuario = findById(id);
 
         if (usuario.isEsBaseProtegido())
-            throw new AccesoDenegadoException(
-                    "El SUPERADMIN base no puede ser modificado");
+            throw new AccesoDenegadoException("El SUPERADMIN base no puede ser modificado");
 
         usuario.setEstado(request.getEstado());
         usuarioSaasRepository.save(usuario);
         return toResponse(usuario);
     }
 
+    // Eliminar 
     @Transactional
-    @AuditableAction(
+    @AuditableAction( 
             accion      = TipoAccionAudit.SAAS_USUARIO_DESACTIVADO,
             descripcion = "Eliminación de usuario SaaS",
             entidad     = "UsuarioSaas"
@@ -127,16 +134,16 @@ public class UsuarioSaasService {
         UsuarioSaas usuario = findById(id);
 
         if (usuario.isEsBaseProtegido())
-            throw new AccesoDenegadoException(
-                    "El SUPERADMIN base no puede ser eliminado");
+            throw new AccesoDenegadoException("El SUPERADMIN base no puede ser eliminado");
 
         usuarioSaasRepository.delete(usuario);
     }
 
-    private UsuarioSaas findById(Long id) {
+    // Helpers 
+    @Transactional(readOnly = true) 
+    protected UsuarioSaas findById(Long id) { // Visibilidad 'protected' de main
         return usuarioSaasRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + id));
     }
 
     public UsuarioSaasResponse toResponse(UsuarioSaas u) {
@@ -151,15 +158,14 @@ public class UsuarioSaasService {
                 .rol(u.getRol())
                 .estado(u.getEstado())
                 .origenRegistro(u.getOrigenRegistro())
-                .creadoPorId(u.getCreadoPor() != null
-                        ? u.getCreadoPor().getId() : null)
-                .creadoPorNombre(u.getCreadoPor() != null
-                        ? u.getCreadoPor().getNombreCompleto() : null)
+                .creadoPorId(u.getCreadoPor() != null ? u.getCreadoPor().getId() : null)
+                .creadoPorNombre(u.getCreadoPor() != null ? u.getCreadoPor().getNombreCompleto() : null)
                 .esBaseProtegido(u.isEsBaseProtegido())
                 .fechaRegistro(u.getFechaRegistro())
                 .build();
     }
 
+    @Transactional
     public UsuarioSaas guardar(UsuarioSaas usuario) {
         return usuarioSaasRepository.save(usuario);
     }

@@ -1,493 +1,346 @@
-# UrbanPark Parking Backend
+# UrbanPark Parking API
 
-## Descripción general
+API REST SaaS para la gestión de acceso vehicular en condominios (planes, titulares, condominios, reglas de acceso, solicitudes de plan, usuarios internos y módulo de contacto público). Incluye autenticación JWT, seguridad con Spring Security, documentación OpenAPI/Swagger y envío de correos.
 
-UrbanPark Parking Backend es una API construida con Spring Boot orientada a la administración multi-tenant de condominios, control de accesos vehiculares, reglas de negocio, auditoría, autenticación híbrida y operación SaaS. La estructura del proyecto muestra una separación clara por dominios funcionales, lo que facilita el mantenimiento, la escalabilidad y la incorporación de nuevos módulos.
+## Tecnologías
 
-El sistema combina dos niveles de operación. Por un lado, existe una capa SaaS para la gestión global de usuarios administradores, planes y condominios. Por otro lado, existe una capa operativa por tenant, donde cada condominio maneja usuarios, vehículos, accesos, incidentes, espacios de estacionamiento, reglas, reportes y notificaciones.
+- Java 17
+- Spring Boot 4.0.6
+- Spring Web MVC
+- Spring Security
+- Spring Data JPA (PostgreSQL)
+- JWT (jjwt 0.12.3)
+- springdoc-openapi-starter-webmvc-ui 2.8.8 (Swagger UI)
+- Spring Mail
+- Lombok
+- Hibernate Validator
 
-## Estructura del proyecto
-
-La base del proyecto se encuentra en `src/main/java/com.urbanpark.parking`. A partir de las capturas, la organización principal está dividida en `config`, `domain`, `security` y `shared`, además de los recursos de configuración en `src/main/resources`.
+## Estructura de proyecto
 
 ```text
-src/main/java/com.urbanpark.parking
-├── config
-├── domain
-│   ├── audit
-│   ├── auth
-│   ├── integration
-│   ├── notifications
-│   ├── parking
-│   ├── parking_management
-│   ├── reports
-│   ├── rules
-│   ├── saas
-│   │   ├── plan
-│   │   └── user
-│   ├── security_operations
-│   ├── tenant
-│   └── users
-│       ├── usuario
-│       └── vehiculo
-├── security
-├── shared
-│   ├── dto
-│   ├── enums
-│   └── util
-└── ParkingApplication
+src
+├── main
+│   ├── java
+│   │   └── com.urbanpark.parking
+│   │       ├── ParkingApplication.java
+│   │       ├── config
+│   │       │   ├── AppConfig.java
+│   │       │   ├── DataInitializer.java
+│   │       │   ├── GlobalExceptionHandler.java
+│   │       │   ├── JacksonConfig.java
+│   │       │   └── OpenApiConfig.java
+│   │       ├── domain
+│   │       │   ├── auth
+│   │       │   │   ├── AuthController.java
+│   │       │   │   ├── AuthService.java
+│   │       │   │   ├── dto
+│   │       │   │   │   ├── ChangePasswordRequest.java
+│   │       │   │   │   ├── ForgotPasswordRequest.java
+│   │       │   │   │   ├── LoginRequest.java
+│   │       │   │   │   ├── LoginResponse.java
+│   │       │   │   │   ├── ProfileResponse.java
+│   │       │   │   │   ├── RegisterRequest.java
+│   │       │   │   │   └── ResetPasswordRequest.java
+│   │       │   │   └── validators
+│   │       │   │       └── RegisterValidator.java
+│   │       │   ├── condominios
+│   │       │   │   ├── Condominio.java
+│   │       │   │   ├── CondominioController.java
+│   │       │   │   ├── CondominioRepository.java
+│   │       │   │   ├── CondominioService.java
+│   │       │   │   └── dto
+│   │       │   │       ├── CondominioRequest.java
+│   │       │   │       ├── CondominioResponse.java
+│   │       │   │       └── VerificacionRequest.java
+│   │       │   ├── notifications
+│   │       │   │   └── contactanos
+│   │       │   │       ├── ContactoController.java
+│   │       │   │       ├── ContactoMensaje.java
+│   │       │   │       ├── ContactoMensajeRepository.java
+│   │       │   │       ├── ContactoMensajeService.java
+│   │       │   │       └── dto
+│   │       │   │           ├── ContactoPublicResponse.java
+│   │       │   │           ├── ContactoRequest.java
+│   │       │   │           ├── ContactoResponse.java
+│   │       │   │           └── RespuestaRequest.java
+│   │       │   ├── planes
+│   │       │   │   ├── Plan.java
+│   │       │   │   ├── PlanController.java
+│   │       │   │   ├── PlanRepository.java
+│   │       │   │   ├── PlanService.java
+│   │       │   │   └── dto
+│   │       │   │       ├── PlanRequest.java
+│   │       │   │       └── PlanResponse.java
+│   │       │   ├── reports
+│   │       │   │   ├── ReportController.java
+│   │       │   │   ├── ReportService.java
+│   │       │   │   └── dto
+│   │       │   │       ├── AdminClientesStatsDTO.java
+│   │       │   │       ├── GlobalStatsDTO.java
+│   │       │   │       ├── ReporteDetalladoDTO.java
+│   │       │   │       ├── TitularStatsDTO.java
+│   │       │   │       ├── TopPlanDTO.java
+│   │       │   │       ├── TopPlanesStatsDTO.java
+│   │       │   │       └── UsuarioStatsDTO.java
+│   │       │   ├── rules
+│   │       │   │   ├── ReglaAcceso.java
+│   │       │   │   ├── ReglaAccesoController.java
+│   │       │   │   ├── ReglaAccesoRepository.java
+│   │       │   │   ├── ReglaAccesoService.java
+│   │       │   │   ├── RuleEngine.java
+│   │       │   │   └── dto
+│   │       │   │       ├── ReglaRequest.java
+│   │       │   │       ├── ReglaResponse.java
+│   │       │   │       ├── ValidacionRequest.java
+│   │       │   │       └── ValidacionResult.java
+│   │       │   ├── solicitudes
+│   │       │   │   ├── SolicitudPlan.java
+│   │       │   │   ├── SolicitudPlanController.java
+│   │       │   │   ├── SolicitudPlanRepository.java
+│   │       │   │   ├── SolicitudPlanService.java
+│   │       │   │   └── dto
+│   │       │   │       ├── RevisionSolicitudRequest.java
+│   │       │   │       ├── SolicitudPlanRequest.java
+│   │       │   │       └── SolicitudPlanResponse.java
+│   │       │   ├── titulares
+│   │       │   │   ├── Titular.java
+│   │       │   │   ├── TitularController.java
+│   │       │   │   ├── TitularRepository.java
+│   │       │   │   ├── TitularService.java
+│   │       │   │   └── dto
+│   │       │   │       ├── TitularRequest.java
+│   │       │   │       └── TitularResponse.java
+│   │       │   └── usuarios
+│   │       │       ├── UsuarioSaas.java
+│   │       │       ├── UsuarioSaasController.java
+│   │       │       ├── UsuarioSaasRepository.java
+│   │       │       ├── UsuarioSaasService.java
+│   │       │       └── dto
+│   │       │           ├── ActualizarEstadoRequest.java
+│   │       │           ├── CrearUsuarioAdminRequest.java
+│   │       │           └── UsuarioSaasResponse.java
+│   │       ├── security
+│   │       │   ├── CustomSecurityExceptionHandler.java
+│   │       │   ├── SecurityConfig.java
+│   │       │   ├── jwt
+│   │       │   │   ├── JwtAuthController.java
+│   │       │   │   ├── JwtAuthFilter.java
+│   │       │   │   ├── JwtProperties.java
+│   │       │   │   └── JwtService.java
+│   │       │   ├── otp
+│   │       │   │   ├── OtpService.java
+│   │       │   │   ├── OtpToken.java
+│   │       │   │   └── OtpTokenRepository.java
+│   │       │   └── userdetails
+│   │       │       └── UserDetailsServiceImpl.java
+│   │       └── shared
+│   │           ├── dto
+│   │           │   └── ApiResponse.java
+│   │           ├── enums
+│   │           ├── exceptions
+│   │           └── utils
+│   └── resources
+│       └── application.properties
+└── test
+    └── java
+        └── com.urbanpark.parking
+            └── ParkingApplicationTests.java
 ```
 
-## Módulo `config`
+## Configuración de entorno
+
+### Variables de entorno (spring-dotenv)
+
+El proyecto usa `spring-dotenv` para cargar variables desde un archivo `.env` en la raíz. Algunos valores típicos:
+
+```env
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/urbanpark
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=postgres
+
+# O para MySQL
+# SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/urbanpark?useSSL=false
+# SPRING_DATASOURCE_USERNAME=root
+# SPRING_DATASOURCE_PASSWORD=123456
+
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+# JWT
+JWT_SECRET=tu_clave_secreta_base64
+JWT_EXPIRATION=900000
+JWT_REFRESH_EXPIRATION=604800000
+
+# Mail
+SPRING_MAIL_HOST=smtp.tu-proveedor.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=tu-correo@dominio.com
+SPRING_MAIL_PASSWORD=tu-password
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 
-El paquete `config` centraliza la configuración transversal del sistema. Según la estructura observada, incluye clases como `AppConfig`, `DataInitializer`, `GlobalExceptionHandler` y `OpenApiConfig`.
+APP_CONTACT_DESTINATION_EMAIL=soporte@urbanpark.com
+APP_MAIL_NOMBRE_REMITENTE=UrbanPark SaaS
+```
 
-### Responsabilidades principales
+Asegúrate de mapear estos nombres a tus propiedades reales en `application.properties` y en `JwtProperties`, `ContactoMensajeService`, etc. [web:163][web:166]
 
-- `AppConfig`: define beans generales de infraestructura, como `RestTemplate`, configuraciones auxiliares u otros componentes compartidos.
-- `DataInitializer`: carga datos iniciales para pruebas o arranque controlado, como usuarios SaaS base, planes, condominios, sesiones ejemplo, reglas o incidencias de demostración.
-- `GlobalExceptionHandler`: captura excepciones globales y devuelve respuestas consistentes para toda la API.
-- `OpenApiConfig`: configura la documentación Swagger / OpenAPI.
+### `application.properties` mínimo
 
-## Módulo `security`
+```properties
+spring.application.name=urbanpark-parking
 
-El paquete `security` contiene la capa de autenticación y autorización basada en JWT. En las imágenes se aprecian las clases `JwtAuthFilter`, `JwtService`, `SecurityConfig` y `SecurityContextHelper`.
+spring.datasource.url=${SPRING_DATASOURCE_URL}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
+spring.jpa.hibernate.ddl-auto=${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+spring.jpa.show-sql=true
 
-### Componentes principales
+# JWT
+jwt.secret=${JWT_SECRET}
+jwt.expiration=${JWT_EXPIRATION:900000}
+jwt.refresh-expiration=${JWT_REFRESH_EXPIRATION:604800000}
 
-- `JwtService`: genera, valida y extrae claims de los tokens JWT propios del sistema.
-- `JwtAuthFilter`: intercepta cada request, valida el token y carga la autenticación en el contexto de Spring Security.
-- `SecurityConfig`: define la política global de seguridad, rutas públicas, filtros y acceso autenticado.
-- `SecurityContextHelper`: sirve como utilidad para obtener datos del usuario autenticado o simplificar lecturas del contexto de seguridad.
+# Mail
+spring.mail.host=${SPRING_MAIL_HOST}
+spring.mail.port=${SPRING_MAIL_PORT}
+spring.mail.username=${SPRING_MAIL_USERNAME}
+spring.mail.password=${SPRING_MAIL_PASSWORD}
+spring.mail.properties.mail.smtp.auth=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+spring.mail.properties.mail.smtp.starttls.enable=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
 
-### Enfoque de seguridad
+# Contacto
+app.contact.destination-email=${APP_CONTACT_DESTINATION_EMAIL}
+app.mail.nombre-remitente=${APP_MAIL_NOMBRE_REMITENTE:UrbanPark SaaS}
 
-El proyecto maneja dos tipos de autenticación:
+# Springdoc / Swagger
+springdoc.api-docs.enabled=true
+springdoc.swagger-ui.path=/swagger-ui.html
+```
 
-1. Autenticación SaaS, para usuarios internos del sistema como `SUPERADMIN` y `ADMIN`.
-2. Autenticación externa por condominio, donde el backend valida credenciales contra una API externa, guarda una sesión local y luego genera un JWT propio para operar internamente.
+## Seguridad y JWT
 
-Ese diseño permite trabajar con un esquema desacoplado, donde la identidad externa del usuario se conserva, pero la autorización operativa se resuelve dentro del backend UrbanPark.
+- Autenticación y registro en `domain.auth`:
+    - `POST /api/v1/auth/register`
+    - `POST /api/v1/auth/login` → retorna `token` y `refreshToken`.
+    - `POST /api/v1/auth/refresh` → genera nuevo access token.
+- Filtro JWT: `security.jwt.JwtAuthFilter`
+    - Lee el header `Authorization: Bearer <token>`
+    - Valida el token con `JwtService`
+    - Carga el usuario con `UserDetailsServiceImpl`
+    - Pone el `Authentication` en el `SecurityContext`.
+- Configuración: `security.SecurityConfig`
+    - Stateless, CSRF deshabilitado.
+    - Jerarquía de roles: `SUPERADMIN > ADMIN > CLIENTE`.
+    - Rutas públicas vs protegidas definidas por `requestMatchers` y `hasRole/hasAnyRole`. [web:165][web:171]
 
-## Módulo `shared`
+Ejemplo de uso con Swagger:
 
-El paquete `shared` agrupa piezas reutilizables por todos los dominios.
+1. Llamar `POST /api/v1/auth/login` con email y password.
+2. Copiar el `token` JWT de la respuesta.
+3. Ir a Swagger UI (`/swagger-ui.html`) → botón `Authorize`.
+4. Ingresar el token en el esquema `bearerAuth`.
+5. Invocar endpoints protegidos con el header `Authorization` agregado automáticamente. [web:172][web:170]
 
-### `shared.dto`
+## Documentación OpenAPI / Swagger
 
-Incluye objetos genéricos de intercambio, como `ApiResponse`, usado para estandarizar la salida de la API. Esto permite que todas las respuestas tengan una forma común con campos como éxito, mensaje, data y timestamp.
+- Dependencia: `springdoc-openapi-starter-webmvc-ui`. [web:167][web:170]
+- Configuración en `config.OpenApiConfig`:
+    - Define información básica de la API.
+    - Define esquema de seguridad `bearerAuth` (HTTP bearer, formato JWT).
+    - Aplica seguridad global para que Swagger envíe el token en las llamadas.
 
-### `shared.enums`
+Acceso a la UI:
 
-Contiene los enums globales del sistema. En las imágenes se observan, entre otros:
+```text
+http://localhost:8080/swagger-ui.html
+```
 
-- `EstadoCondominio`
-- `EstadoEspacio`
-- `EstadoIncidente`
-- `EstadoPlan`
-- `EstadoSync`
-- `MetodoAcceso`
-- `NivelIncidente`
-- `RolParking`
-- `RolSaas`
-- `TipoAccionAudit`
-- `TipoEspacio`
-- `TipoEvento`
-- `TipoIncidente`
-- `TipoNotificacion`
-- `TipoRegla`
-- `TipoVehiculo`
+(o el puerto que uses).
 
-Estos enums son fundamentales para mantener consistencia semántica, validación fuerte y reglas claras de negocio.
+## Módulos principales
 
-### `shared.util`
+### Autenticación (`domain.auth`)
 
-Incluye utilidades de soporte. En la estructura se aprecia `TenantValidator`, probablemente orientado a validar la coherencia del tenant en requests o procesos internos.
+- Registro de clientes (`RegisterRequest`, `RegisterValidator`).
+- Login y generación de JWT/refresh (`LoginRequest`, `LoginResponse`).
+- Perfil (`ProfileResponse`), cambio de contraseña y recuperación con OTP (`OtpService`, `OtpToken`).
 
-## Módulo `domain`
+### Usuarios internos (`domain.usuarios`)
 
-El paquete `domain` concentra toda la lógica del negocio. Cada submódulo representa un contexto funcional bien separado.
+- CRUD de usuarios SaaS internos.
+- Gestión de roles (`RolSaas`) y estados (`EstadoUsuarioSaas`).
 
-***
+### Planes (`domain.planes`)
 
-## `domain.auth`
+- CRUD de planes (`Plan`, `PlanRequest`, `PlanResponse`).
+- Planes públicos activos (`GET /api/v1/planes`) y administración bajo `/api/v1/admin/planes`.
 
-Este paquete centraliza la autenticación. En las imágenes se ven DTOs como `AuthResponse`, `ExternalLoginRequest`, `ExternalLoginResult`, `SaasAuthResponse`, `SaasLoginRequest` y `UsuarioExternoDTO`, además de `AuthController`, `AuthService`, `ExternalTokenValidator` y `SaasAuthService`.
+### Titulares y condominios
 
-### Responsabilidad
+- Titulares (`domain.titulares`): datos fiscales y plan asociado.
+- Condominios (`domain.condominios`): alta, verificación, estado (`EstadoCondominio`).
 
-Gestiona dos flujos de autenticación:
+### Reglas de acceso (`domain.rules`)
 
-- Login de usuarios SaaS del sistema principal.
-- Login de usuarios de condominios mediante integración con una API externa.
+- Motor de reglas (`RuleEngine`) y reglas por condominio (`ReglaAcceso`).
+- Endpoints para crear, listar, actualizar y validar reglas de acceso.
 
-### Componentes clave
+### Solicitudes de plan (`domain.solicitudes`)
 
-- `AuthController`: expone endpoints de autenticación.
-- `AuthService`: coordina login externo, registro de sesión local, auditoría y emisión del JWT propio.
-- `ExternalTokenValidator`: se encarga de autenticar contra la API del condominio, obtener cookies/tokens externos y consultar la identidad del usuario remoto.
-- `SaasAuthService`: maneja autenticación de usuarios de la plataforma SaaS.
+- Flujo de solicitud, revisión y cambio de plan (`SolicitudPlan`, `SolicitudPlanService`).
 
-Este módulo es clave porque sirve como punto de entrada para la identidad y la sesión del usuario.
+### Contacto público (`domain.notifications.contactanos`)
 
-***
+- `POST /api/v1/contacto`: público, registra mensaje de contacto y envía correo al corporativo.
+- `GET /api/v1/contacto/seguimiento/{codigo}`: público, consulta por código de seguimiento.
+- `GET /api/v1/contacto`, `/respondidos`, `/pendientes`, `PATCH /{id}/responder`: privados (ADMIN/SUPERADMIN), gestionan mensajes recibidos.
 
-## `domain.audit`
+### Reportes y estadísticas (`domain.reports`)
 
-El módulo `audit` permite registrar y consultar trazabilidad del sistema. En las capturas aparecen `AuditLog`, `AuditLogRepository`, `AuditController`, `AuditService`, `AuditQueryService` y el DTO `AuditLogResponse`.
+- Estadísticas globales de usuarios, clientes, planes y titulares.
+- Endpoints:
+    - `GET /api/v1/reportes/estadisticas-globales` (SUPERADMIN)
+    - `GET /api/v1/reportes/estadisticas-titular` (CLIENTE)
+    - `GET /api/v1/reportes/estadisticas-clientes` (ADMIN)
+    - `GET /api/v1/reportes/top-planes` (ADMIN)
+    - `GET /api/v1/reportes/reporte-detallado` (SUPERADMIN)
 
-### Propósito
+## Ejecución del proyecto
 
-Registrar eventos relevantes como:
+### Requisitos previos
 
-- inicio de sesión,
-- intentos fallidos,
-- registro y actualización de entidades,
-- activaciones o desactivaciones,
-- accesos vehiculares,
-- incidentes,
-- reglas,
-- acciones administrativas.
+- JDK 17
+- Maven 3.x
+- Base de datos PostgreSQL en ejecución
 
-El objetivo es mantener trazabilidad operativa y facilitar monitoreo, control y soporte.
+### Comandos
 
-***
+Compilar:
 
-## `domain.integration`
+```bash
+mvn clean install
+```
 
-Este módulo actúa como capa de integración con sistemas externos. En la estructura se aprecian `IntegrationClient`, `IntegrationController`, `UsuarioSesion`, `UsuarioSesionRepository` y DTOs como `ConexionStatusDTO` y `HealthExternoDTO`.
+Ejecutar la aplicación:
 
-### Rol del módulo
+```bash
+mvn spring-boot:run
+```
 
-- Consultar disponibilidad de servicios externos.
-- Probar conectividad con la API del condominio.
-- Mantener sesiones locales vinculadas a usuarios autenticados externamente.
-- Almacenar datos como `externalUserId`, `condominioId`, `rol`, `email`, nombre y token/cookie de acceso externo.
+Ejecutar tests:
 
-`UsuarioSesion` es una entidad importante porque hace de puente entre el usuario autenticado en el sistema externo y la sesión operativa dentro del backend UrbanPark.
+```bash
+mvn test
+```
 
-***
+La API quedará disponible por defecto en:
 
-## `domain.tenant`
+```text
+http://localhost:8080
+```
 
-Este módulo representa el contexto multi-tenant del sistema. En las imágenes aparecen `Condominio`, `CondominioController`, `CondominioRepository`, `CondominioService`, `TenantContext`, `TenantFilter` y los DTOs `CondominioRequest` y `CondominioResponse`.
+Swagger UI:
 
-### Responsabilidad
-
-- Gestionar condominios registrados en la plataforma.
-- Definir la información principal de cada tenant, como nombre, URL base de API externa, titular, plan y estado.
-- Mantener el contexto del tenant durante cada request.
-
-### Componentes destacados
-
-- `Condominio`: entidad principal del tenant.
-- `TenantContext`: almacena el tenant actual en contexto por request.
-- `TenantFilter`: resuelve y limpia el contexto multi-tenant durante el ciclo HTTP.
-
-Este módulo es la base para aislar datos entre condominios y asegurar que cada operación se ejecute dentro del tenant correspondiente.
-
-***
-
-## `domain.saas`
-
-La carpeta `saas` está separada en dos submódulos: `plan` y `user`.
-
-### `saas.plan`
-
-Incluye `Plan`, `PlanController`, `PlanRepository`, `PlanService` y los DTOs `PlanRequestDTO` y `PlanResponseDTO`.
-
-#### Objetivo
-
-Administrar los planes comerciales de la plataforma SaaS, por ejemplo:
-
-- nombre,
-- descripción,
-- precio,
-- límites funcionales,
-- estado.
-
-Esto permite ofrecer distintos niveles de servicio a los condominios registrados.
-
-### `saas.user`
-
-Incluye `SaasUser`, `SaasUserController`, `SaasUserRepository`, `SaasUserService` y sus DTOs de request/response.
-
-#### Objetivo
-
-Gestionar usuarios internos del ecosistema SaaS, como:
-
-- `SUPERADMIN`
-- `ADMIN`
-- otros roles administrativos globales si se amplía el sistema
-
-Este módulo no representa a los usuarios del condominio, sino a quienes administran la plataforma a nivel central.
-
-***
-
-## `domain.users.usuario`
-
-Este submódulo contiene `UsuarioCondominio`, `UsuarioCondominioController`, `UsuarioCondominioRepository`, `UsuarioCondominioService` y DTOs `UsuarioRequest` y `UsuarioResponse`.
-
-### Función
-
-Administrar usuarios del condominio dentro del dominio local del sistema. Dependiendo de la implementación, puede representar sincronización parcial, caché local o una capa propia para usuarios internos del tenant.
-
-Aquí se manejan perfiles como propietarios, inquilinos, administradores del condominio y otros tipos de usuarios operativos.
-
-***
-
-## `domain.users.vehiculo`
-
-Este módulo es uno de los más importantes para la operación diaria. En las imágenes aparecen:
-
-- `Vehiculo`
-- `VehiculoController`
-- `VehiculoExternalClient`
-- `VehiculoRepository`
-- `VehiculoService`
-- DTOs `VehiculoRequest`, `VehiculoResponse`, `VehiculoExternalResponse`, `VehiculoExternalPageResponse`
-
-### Responsabilidad
-
-- Gestionar vehículos registrados localmente.
-- Consultar vehículos desde la API externa del condominio.
-- Filtrar vehículos según el usuario autenticado.
-- Permitir que propietarios o inquilinos vean sus propios vehículos.
-- Permitir que administración o seguridad vea todos los vehículos del tenant.
-
-### Diseño importante
-
-Este módulo combina dos fuentes de datos:
-
-1. Persistencia local para reglas internas, auditoría y operaciones propias.
-2. Consulta remota a `/api/vehiculos` del sistema externo del condominio.
-
-El servicio resuelve ambos escenarios mediante DTOs diferenciados para la respuesta externa y la respuesta local.
-
-***
-
-## `domain.parking`
-
-Incluye `AccesoVehicular`, `AccesoVehicularController`, `AccesoVehicularRepository`, `AccesoVehicularService` y DTOs como `AccesoResponse`, `RegistroEntradaRequest` y `RegistroSalidaRequest`.
-
-### Objetivo
-
-Controlar el flujo de entrada y salida de vehículos en el estacionamiento.
-
-### Funciones probables
-
-- registrar ingresos,
-- registrar salidas,
-- validar placa,
-- aplicar reglas de acceso,
-- dejar trazabilidad del movimiento,
-- vincular accesos con método de validación o resultado.
-
-Este módulo es el núcleo operativo del sistema de parking.
-
-***
-
-## `domain.parking_management`
-
-Este paquete contiene `EspacioParking`, `EspacioParkingController`, `EspacioParkingRepository`, `EspacioParkingService` y DTOs como `EspacioRequest`, `EspacioResponse` y `OcupacionResponse`.
-
-### Responsabilidad
-
-Gestionar espacios físicos del estacionamiento:
-
-- alta y edición de espacios,
-- estado del espacio,
-- tipo de espacio,
-- ocupación,
-- métricas de disponibilidad.
-
-Este módulo complementa el control vehicular con la administración física del parking.
-
-***
-
-## `domain.rules`
-
-El módulo `rules` contiene `ReglaAcceso`, `ReglaAccesoController`, `ReglaAccesoRepository`, `ReglaAccesoService`, `RuleEngine` y DTOs como `ReglaRequest`, `ReglaResponse`, `ValidacionRequest` y `ValidacionResult`.
-
-### Función
-
-Permite definir y ejecutar reglas de acceso parametrizables por tenant.
-
-### Ejemplos de reglas
-
-- horario permitido de acceso,
-- visitantes autorizados,
-- roles permitidos,
-- límite de vehículos activos,
-- otras validaciones configurables.
-
-### Componente central
-
-`RuleEngine` evalúa las reglas activas de un tenant sobre un request de validación y devuelve si el acceso está autorizado o denegado, junto con el motivo correspondiente.
-
-Este diseño hace posible adaptar el comportamiento del sistema a políticas diferentes por condominio sin reescribir lógica central.
-
-***
-
-## `domain.security_operations`
-
-En este módulo se encuentran `Incidente`, `IncidenteController`, `IncidenteRepository`, `IncidenteService`, `ValidacionPlacaController` y DTOs como `IncidenteRequest`, `IncidenteResponse` y `ResolucionRequest`.
-
-### Responsabilidad
-
-Gestionar incidentes operativos y de seguridad relacionados con el estacionamiento.
-
-### Funciones principales
-
-- registrar incidentes,
-- consultar estado,
-- resolver casos,
-- asociar incidentes a sesiones o placas,
-- validar placas en escenarios operativos.
-
-Sirve como soporte a la seguridad del condominio y al seguimiento de eventos relevantes.
-
-***
-
-## `domain.notifications`
-
-El paquete contiene `Notificacion`, `NotificacionController`, `NotificacionRepository`, `NotificacionService`, `SseEmitterRegistry` y el DTO `NotificacionResponse`.
-
-### Objetivo
-
-Administrar notificaciones del sistema y mecanismos de emisión en tiempo real.
-
-### Posibles usos
-
-- alertas de acceso,
-- aviso de incidentes,
-- cambios de estado,
-- mensajes al personal de seguridad,
-- publicación de eventos por SSE.
-
-`SseEmitterRegistry` sugiere que el sistema soporta Server-Sent Events para actualización en tiempo real hacia clientes conectados.
-
-***
-
-## `domain.reports`
-
-Incluye `ReportController`, `ReportRepository`, `ReportService` y DTOs como:
-
-- `ReporteAccesosDTO`
-- `ReporteAccesosPorDiaDTO`
-- `ReporteOcupacionDTO`
-- `ReporteVehiculoDTO`
-- `TopPlacaDTO`
-
-### Responsabilidad
-
-Construir vistas de reporte y analítica operativa.
-
-### Casos de uso
-
-- volumen de accesos por día,
-- ocupación del estacionamiento,
-- vehículos más frecuentes,
-- placas con mayor recurrencia,
-- indicadores de operación del condominio.
-
-Este módulo permite transformar los datos operativos en información útil para gestión y toma de decisiones.
-
-## Clase principal
-
-La clase `ParkingApplication` es el punto de arranque del proyecto Spring Boot. Desde ahí se inicializa el contexto de la aplicación, los beans, la configuración y todos los módulos descritos.
-
-## Archivo de configuración
-
-En `src/main/resources/application.properties` se centralizan propiedades como:
-
-- credenciales y conexión a base de datos,
-- configuración JWT,
-- parámetros de integración,
-- puertos,
-- logging,
-- JPA / Hibernate,
-- Swagger u otras opciones del entorno.
-
-## Convenciones arquitectónicas observadas
-
-La estructura del proyecto refleja varias decisiones de diseño importantes:
-
-### 1. Organización por dominio
-
-Cada contexto funcional está encapsulado en su propio paquete con entidades, controladores, servicios, repositorios y DTOs asociados.
-
-### 2. Separación de capas
-
-Se distingue claramente entre:
-
-- Controller: entrada HTTP
-- Service: lógica de negocio
-- Repository: acceso a datos
-- DTO: contratos de entrada y salida
-- Entity: persistencia
-
-### 3. Multi-tenancy contextual
-
-El tenant se resuelve por request y condiciona operaciones sobre vehículos, reglas, incidencias y demás recursos del condominio.
-
-### 4. Integración híbrida
-
-El sistema no depende exclusivamente de datos locales. Parte de la información proviene de APIs externas del condominio, especialmente en autenticación y consulta de vehículos.
-
-### 5. Auditoría transversal
-
-La presencia del módulo `audit` y del enum `TipoAccionAudit` muestra que el sistema fue pensado para registrar operaciones sensibles de manera homogénea.
-
-## Flujo funcional resumido
-
-Un flujo típico del sistema puede entenderse así:
-
-1. Un usuario del condominio inicia sesión mediante el módulo `auth`.
-2. El backend valida credenciales en la API externa del condominio.
-3. Se almacena una sesión local en `integration.UsuarioSesion`.
-4. Se genera un JWT propio del backend.
-5. El request posterior entra por `security.JwtAuthFilter`.
-6. Se resuelve el tenant y el usuario actual.
-7. El módulo correspondiente, por ejemplo `vehiculo`, `parking`, `rules` o `security_operations`, ejecuta la lógica dentro del contexto del condominio.
-8. La acción se registra en auditoría cuando corresponde.
-
-## Requisitos recomendados para ejecutar el proyecto
-
-Aunque las imágenes no muestran el archivo `pom.xml`, por la estructura puede inferirse un stack típico de Spring Boot con los siguientes componentes:
-
-- Java 17 o superior
-- Spring Boot
-- Spring Web
-- Spring Security
-- Spring Data JPA
-- Base de datos relacional, probablemente PostgreSQL
-- Lombok
-- Swagger / springdoc-openapi
-- JJWT para manejo de tokens
-
-## Recomendaciones de mantenimiento
-
-### Documentar cada módulo
-
-Sería conveniente complementar esta estructura con documentación interna por paquete, especialmente en módulos con integración externa y reglas dinámicas.
-
-### Diferenciar mejor algunos conceptos de dominio
-
-En componentes como vehículos y reglas, conviene mantener una distinción clara entre datos locales y datos externos para evitar ambigüedades en enums, DTOs y lógica de mapeo.
-
-### Fortalecer pruebas
-
-La estructura es adecuada para incorporar pruebas unitarias y de integración por módulo, sobre todo en:
-
-- `RuleEngine`
-- `AuthService`
-- `VehiculoService`
-- `AccesoVehicularService`
-- `IncidenteService`
-
-## Conclusión
-
-UrbanPark Parking Backend presenta una arquitectura bien modularizada, orientada a dominios de negocio concretos y preparada para operar en un entorno multi-tenant con integración externa. La separación entre la capa SaaS y la capa operativa por condominio es uno de los puntos más sólidos del diseño, ya que permite escalar la plataforma sin mezclar responsabilidades.
-
-La estructura observada también sugiere una base bastante flexible para crecer en funcionalidades como sincronización avanzada, reglas más complejas, automatización de accesos, reportes enriquecidos y operación en tiempo real. Bien documentado y acompañado de pruebas por dominio, este proyecto puede evolucionar de forma ordenada y mantenible.
+```text
+http://localhost:8080/swagger-ui.html
+```

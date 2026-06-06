@@ -7,10 +7,10 @@ import com.urbanpark.parking.domain.titulares.Titular;
 import com.urbanpark.parking.domain.titulares.TitularService;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaas;
 import com.urbanpark.parking.domain.usuarios.UsuarioSaasService;
-import com.urbanpark.parking.shared.audit.AuditableAction;
+import com.urbanpark.parking.shared.audit.AuditableAction; 
 import com.urbanpark.parking.shared.enums.EstadoCondominio;
 import com.urbanpark.parking.shared.enums.EstadoPlan;
-import com.urbanpark.parking.shared.enums.TipoAccionAudit;
+import com.urbanpark.parking.shared.enums.TipoAccionAudit; 
 import com.urbanpark.parking.shared.exceptions.AccesoDenegadoException;
 import com.urbanpark.parking.shared.exceptions.LimitePlanExcedidoException;
 import com.urbanpark.parking.shared.exceptions.ResourceNotFoundException;
@@ -31,8 +31,9 @@ public class CondominioService {
     private final TitularService       titularService;
     private final UsuarioSaasService   usuarioSaasService;
 
+    // Cliente registra un condominio 
     @Transactional
-    @AuditableAction(
+    @AuditableAction( // Anotación de feature/_audit
             accion      = TipoAccionAudit.CONDOMINIO_CREADO,
             descripcion = "Cliente registra nuevo condominio",
             entidad     = "Condominio"
@@ -76,6 +77,8 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
+    // Cliente lista sus condominios 
+    @Transactional(readOnly = true) 
     public List<CondominioResponse> listarMisCondominios() {
         UsuarioSaas usuario = usuarioSaasService.getUsuarioActual();
         Titular titular = titularService.findByUsuarioId(usuario.getId());
@@ -86,6 +89,8 @@ public class CondominioService {
                 .toList();
     }
 
+    // Admin lista condominios pendientes 
+    @Transactional(readOnly = true) 
     public List<CondominioResponse> listarPendientes() {
         return condominioRepository
                 .findAllByEstado(EstadoCondominio.PENDIENTE_VERIFICACION)
@@ -94,6 +99,8 @@ public class CondominioService {
                 .toList();
     }
 
+    // Admin lista todos los condominios 
+    @Transactional(readOnly = true) 
     public List<CondominioResponse> listarTodos() {
         return condominioRepository.findAll()
                 .stream()
@@ -101,8 +108,9 @@ public class CondominioService {
                 .toList();
     }
 
+    // Admin aprueba condominio 
     @Transactional
-    @AuditableAction(
+    @AuditableAction( // Anotación de feature/_audit
             accion      = TipoAccionAudit.CONDOMINIO_ACTIVADO,
             descripcion = "Admin aprueba condominio",
             entidad     = "Condominio"
@@ -123,8 +131,9 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
+    // Admin rechaza condominio 
     @Transactional
-    @AuditableAction(
+    @AuditableAction( // Anotación de feature/_audit
             accion      = TipoAccionAudit.CONDOMINIO_DESACTIVADO,
             descripcion = "Admin rechaza condominio",
             entidad     = "Condominio"
@@ -149,7 +158,9 @@ public class CondominioService {
         return toResponse(condominio);
     }
 
-    private Condominio findById(Long id) {
+    // Helpers 
+    @Transactional(readOnly = true) 
+    protected Condominio findById(Long id) { // Visibilidad 'protected' 
         return condominioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Condominio no encontrado con id: " + id));
