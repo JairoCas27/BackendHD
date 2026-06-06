@@ -1,4 +1,5 @@
 // shared/audit/AuditLogAspect.java
+// shared/audit/AuditLogAspect.java
 package com.urbanpark.parking.shared.audit;
 
 import com.urbanpark.parking.domain.audit.AuditLogService;
@@ -23,7 +24,7 @@ public class AuditLogAspect {
 
     private final AuditLogService auditLogService;
     
-    // MEJORA : ThreadLocal para control antibucle robusto
+    // MEJORA: ThreadLocal para control antibucle robusto
     private static final ThreadLocal<Boolean> EN_AUDITORIA = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     @Around("@annotation(auditable)")
@@ -47,20 +48,20 @@ public class AuditLogAspect {
                 metodo   = req.getMethod();
                 ip       = resolverIp(req);
                 
-                // MEJORA : Verificación precisa con startsWith
+                // MEJORA: Verificación precisa con startsWith
                 if (endpoint.startsWith("/api/v1/audit")) {
                     log.trace("Excluyendo ruta de auditoría del propio registro: {}", endpoint);
                     return pjp.proceed();
                 }
             } else {
-                // MEJORA : Logging en lugar de supresión silenciosa
+                // MEJORA: Logging en lugar de supresión silenciosa
                 log.debug("RequestContextHolder sin contexto HTTP activo. Posible ejecución asíncrona o programada.");
             }
         } catch (ClassCastException e) {
-            // MEJORA : Logging de advertencia
+            // MEJORA: Logging de advertencia
             log.warn("No se pudo extraer contexto HTTP. Tipo de atributos incompatible: {}", e.getMessage());
         } catch (Exception e) {
-            // MEJORA : Logging de error
+            // MEJORA: Logging de error
             log.error("Error inesperado al extraer contexto HTTP", e);
         }
 
@@ -93,7 +94,7 @@ public class AuditLogAspect {
                 }
             }
         } catch (Exception e) {
-            // MEJORA : Logging en lugar de supresión
+            // MEJORA: Logging en lugar de supresión
             log.warn("Error al extraer contexto de seguridad: {}", e.getMessage());
         }
 
@@ -104,7 +105,7 @@ public class AuditLogAspect {
 
         // ── Ejecución y registro ───────────────────────────────────────────
         try {
-            // MEJORA : Marcar que estamos en contexto de auditoría
+            // MEJORA: Marcar que estamos en contexto de auditoría
             EN_AUDITORIA.set(Boolean.TRUE);
             
             Object resultado = pjp.proceed();
@@ -119,10 +120,13 @@ public class AuditLogAspect {
             
             return resultado;
         } catch (Throwable ex) {
-            // Registro fallido
+            // MEJORA: Descripción dinámica según el resultado
+            String descFallido = desc + " [FALLIDO]";
+            
+            // Registro fallido con descripción actualizada
             auditLogService.registrar(
                     usuarioId, email, rol,
-                    auditable.accion(), desc, auditable.entidad(),
+                    auditable.accion(), descFallido, auditable.entidad(),
                     endpoint, metodo, ip,
                     false, ex.getMessage()
             );
@@ -133,7 +137,7 @@ public class AuditLogAspect {
         }
     }
 
-    // MEJORA : Normalización completa de IPs
+    // MEJORA: Normalización completa de IPs
     private String resolverIp(HttpServletRequest req) {
         String ip = req.getHeader("X-Forwarded-For");
         
